@@ -49,6 +49,7 @@ interface Props {
   onOpenEditor: (id: string) => void;
   onOpenStudio: (kind: "neo1" | "bubble", id: string) => void;
   onOpenZoomStudio: (id?: string) => void;
+  onOpenAniPlayer: () => void;
   onGoSheet: () => void;
   onSendToAdShop: () => void;
   onSlice: (id: string) => void;
@@ -413,6 +414,12 @@ export function BoardView(p: Props) {
             onClick={() => studioFrameId ? p.onOpenZoomStudio(studioFrameId) : p.onOpenZoomStudio()}>
             Zoom Studio
           </Btn>
+          <Btn size="xs" icon="film" variant="cool"
+            disabled={!doc.frames.length}
+            title={doc.frames.length ? `Play ${doc.frames.length} frames in AniPlayer` : "Add frames to play"}
+            onClick={() => p.onOpenAniPlayer()}>
+            AniPlayer
+          </Btn>
 
           {selected.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5 pop">
@@ -731,6 +738,7 @@ export function BoardView(p: Props) {
           onOpenEditor={() => focus && p.onOpenEditor(focus.id)}
           onOpenStudio={(kind) => focus && p.onOpenStudio(kind, focus.id)}
           onOpenZoomStudio={() => focus && p.onOpenZoomStudio(focus.id)}
+          onOpenAniPlayer={() => p.onOpenAniPlayer()}
           onComment={(text) => focus && api.comment(focus.id, text)}
           onDeleteComment={(cid) => focus && api.deleteComment(focus.id, cid)}
           onReplace={(file) => focus && api.replaceImage(focus.id, file)}

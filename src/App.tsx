@@ -48,6 +48,7 @@ import { cn } from "./utils/cn";
 const Neo1StudioModal = lazy(() => import("./components/Neo1StudioModal"));
 const BubbleStudioModal = lazy(() => import("./components/Bubba1StudioModal"));
 const ZoomStudioModal = lazy(() => import("./components/ZoomStudioModal").then(m => ({ default: m.ZoomStudioModal })) );
+const AniPlayerModal = lazy(() => import("./components/AniPlayerModal").then(m => ({ default: m.AniPlayerModal })) );
 
 type StudioKind = "neo1" | "bubble";
 interface StudioSession {
@@ -124,6 +125,8 @@ export default function App() {
   const [studioSession, setStudioSession] = useState<StudioSession | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
+  const [aniOpen, setAniOpen] = useState(false);
+  const [aniIndex, setAniIndex] = useState<number | null>(null);
   const [density, setDensity] = useState(prefs.current.density ?? 268);
   const [handoff, setHandoff] = useState<HandoffOptions>({
     ...DEFAULT_HANDOFF,
@@ -609,6 +612,28 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
     void load();
   }, [doc.frames]);
 
+  // AniPlayer integration – synced live with ReelDeck deck and Zoom outputs
+  const aniFrames = useMemo(() => doc.frames.map(f => ({ url: f.src, name: f.name, caption: f.caption })), [doc.frames]);
+  const openAniPlayer = useCallback((id?: string | number) => {
+    if (typeof id === "string") {
+      const idx = doc.frames.findIndex(f => f.id === id);
+      setAniIndex(idx >= 0 ? idx : 0);
+      if (idx >= 0) setFocusId(id);
+    } else if (typeof id === "number") {
+      setAniIndex(Math.max(0, Math.min(doc.frames.length - 1, id)));
+      const f = doc.frames[id]; if (f) setFocusId(f.id);
+    } else {
+      const targetId = selected.length === 1 ? selected[0] : focusId ?? doc.frames[0]?.id;
+      if (!targetId) { if (!doc.frames.length) { toast("Add frames to play animation", "warn"); return; } setAniIndex(0); }
+      else {
+        const idx = doc.frames.findIndex(f => f.id === targetId);
+        setAniIndex(idx >= 0 ? idx : 0);
+        if (targetId) setFocusId(targetId);
+      }
+    }
+    setAniOpen(true);
+  }, [doc.frames, selected, focusId]);
+
   const saveFromStudio = (src: string, sliceIndex: number | null | undefined, name: string | undefined, project: StudioProject) => {
     if (!studioSession) return;
     const dimensions = pngDimensions(src);
@@ -958,6 +983,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             }}
             onOpenStudio={openStudio}
             onOpenZoomStudio={openZoomStudio}
+            onOpenAniPlayer={() => openAniPlayer()}
             onGoSheet={() => setTab("sheet")}
             onSendToAdShop={() => handoffToAdShop("selected-or-all", "reeldeck")}
             onSlice={(id) => { const frame = doc.frames.find((f) => f.id === id); if (frame) { setSliceFrame({ ...frame }); setTab("slice"); } }}
@@ -1106,7 +1132,20 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             onApplyZoomVariations={handleApplyZoomVariations}
             onOpenInAniPlayer={(frames, idx) => {
               handleApplyZoomVariations(frames, idx !== null && idx !== undefined ? "replace_frame" : "append_storyboard", idx ?? zoomIndex);
+              setTimeout(() => openAniPlayer(undefined as any), 120);
             }}
+          />
+        </Suspense>
+      )}
+
+      {aniOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center text-white">Loading AniPlayer…</div>}>
+          <AniPlayerModal
+            isOpen={aniOpen}
+            onClose={() => setAniOpen(false)}
+            frames={aniFrames}
+            initialIndex={aniIndex}
+            onSelectFrame={(idx) => { setAniIndex(idx); const f = doc.frames[idx]; if (f) setFocusId(f.id); }}
           />
         </Suspense>
       )}
