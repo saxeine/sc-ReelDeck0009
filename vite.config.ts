@@ -12,12 +12,13 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   server: {
     host: "0.0.0.0",
-    // Preview hosts are proxied under a per-sandbox *.e2b.app domain.
-    allowedHosts: [".e2b.app", "localhost", "127.0.0.1"],
+    port: 3000,
+    allowedHosts: true,
   },
   preview: {
     host: "0.0.0.0",
-    allowedHosts: [".e2b.app", "localhost", "127.0.0.1"],
+    port: 3000,
+    allowedHosts: true,
   },
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {
