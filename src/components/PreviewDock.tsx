@@ -1,10 +1,11 @@
 import { cn } from "../utils/cn";
 import { Icon } from "./Icon";
-import { Btn, IconBtn } from "./ui";
+import { Btn } from "./ui";
 
 /**
- * Always-on live preview of the rendered contact sheet.
- * Collapses to a slim strip but never disappears from the workspace.
+ * Always-on live preview of the rendered contact sheet. It stays expanded in
+ * the workspace; the Sheet tab keeps a compact dock because its canvas is
+ * already shown full-size.
  */
 export function PreviewDock({
   preview,
@@ -14,9 +15,7 @@ export function PreviewDock({
   themeLabel,
   rendering,
   renderMs,
-  collapsed,
   locked,
-  onToggle,
   onOpenSheet,
   onExport,
   onCopy,
@@ -29,16 +28,14 @@ export function PreviewDock({
   themeLabel: string;
   rendering: boolean;
   renderMs: number;
-  collapsed: boolean;
   /** the sheet tab already shows the big preview — the dock stays slim there */
   locked: boolean;
-  onToggle: () => void;
   onOpenSheet: () => void;
   onExport: () => void;
   onCopy: () => void;
   onHandoff: () => void;
 }) {
-  const slim = collapsed || locked;
+  const slim = locked;
 
   return (
     <section
@@ -132,15 +129,6 @@ export function PreviewDock({
           )}
         </div>
       </div>
-
-      {!locked && (
-        <IconBtn
-          icon={collapsed ? "up" : "down"}
-          label={collapsed ? "Expand preview" : "Collapse preview"}
-          onClick={onToggle}
-          className="my-auto"
-        />
-      )}
     </section>
   );
 }
