@@ -47,6 +47,7 @@ import { cn } from "./utils/cn";
 
 const Neo1StudioModal = lazy(() => import("./components/Neo1StudioModal"));
 const BubbleStudioModal = lazy(() => import("./components/Bubba1StudioModal"));
+const ZoomStudioModal = lazy(() => import("./components/ZoomStudioModal").then(m => ({ default: m.ZoomStudioModal })) );
 
 type StudioKind = "neo1" | "bubble";
 interface StudioSession {
@@ -121,6 +122,8 @@ export default function App() {
   );
   const [editorId, setEditorId] = useState<string | null>(null);
   const [studioSession, setStudioSession] = useState<StudioSession | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const [density, setDensity] = useState(prefs.current.density ?? 268);
   const [handoff, setHandoff] = useState<HandoffOptions>({
     ...DEFAULT_HANDOFF,
@@ -547,6 +550,65 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
     setStudioSession({ kind, frame: { ...frame }, imageSrc });
   };
 
+  // Zoom Studio integration synced with ReelDeck
+  const zoomSlices = useMemo(() => doc.frames.map((f) => ({ name: f.name, url: f.src })), [doc.frames]);
+  const openZoomStudio = useCallback((id?: string) => {
+    const targetId = id ?? (selected.length === 1 ? selected[0] : focusId ?? doc.frames[0]?.id);
+    if (!targetId) { toast("Select a frame first to open Zoom Studio", "warn"); return; }
+    const idx = doc.frames.findIndex((f) => f.id === targetId);
+    setZoomIndex(idx >= 0 ? idx : 0);
+    if (targetId) setFocusId(targetId);
+    setZoomOpen(true);
+  }, [selected, focusId, doc.frames]);
+
+  const handleApplyZoomVariations = useCallback((frames: Array<{ name: string; url: string }>, mode: "append_storyboard" | "replace_frame", targetSliceIndex?: number | null) => {
+    if (!frames.length) return;
+    const load = async () => {
+      const mapped: Frame[] = [];
+      for (let i = 0; i < frames.length; i++) {
+        const f = frames[i];
+        // estimate dims from source image
+        const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+          const img = new Image(); img.onload = () => resolve({ w: img.naturalWidth || 1280, h: img.naturalHeight || 720 }); img.onerror = () => resolve({ w: 1280, h: 720 }); img.src = f.url;
+        });
+        mapped.push({
+          id: uid(),
+          name: f.name,
+          caption: "",
+          src: f.url,
+          w: dims.w, h: dims.h,
+          shot: "WS",
+          status: "draft",
+          duration: 2 + (i % 3),
+          tags: ["zoom-studio"],
+          comments: [],
+          annotated: true,
+          createdAt: Date.now() + i,
+        });
+      }
+      if (mode === "replace_frame" && targetSliceIndex !== null && targetSliceIndex !== undefined && doc.frames[targetSliceIndex]) {
+        const targetId = doc.frames[targetSliceIndex].id;
+        // replace single frame with sequence: delete then add at same index
+        dispatch({ type: "DELETE_FRAMES", ids: [targetId] });
+        // after deletion, insert at original index
+        setTimeout(() => {
+          dispatch({ type: "ADD_FRAMES", frames: mapped, index: targetSliceIndex });
+          setFocusId(mapped[0].id);
+          setSelected(mapped.map(m => m.id));
+        }, 0);
+        toast(`Replaced frame with ${mapped.length} zoom frames`, "success", { label: "Undo", run: () => dispatch({ type: "UNDO" }) });
+      } else {
+        const anchorIdx = targetSliceIndex !== null && targetSliceIndex !== undefined ? targetSliceIndex + 1 : undefined;
+        const insertAt = anchorIdx !== undefined && anchorIdx <= doc.frames.length ? anchorIdx : undefined;
+        dispatch({ type: "ADD_FRAMES", frames: mapped, index: insertAt });
+        setFocusId(mapped[0].id);
+        setSelected(mapped.map(m => m.id));
+        toast(`Appended ${mapped.length} zoom frames to ReelDeck`, "success", { label: "Undo", run: () => dispatch({ type: "UNDO" }) });
+      }
+    };
+    void load();
+  }, [doc.frames]);
+
   const saveFromStudio = (src: string, sliceIndex: number | null | undefined, name: string | undefined, project: StudioProject) => {
     if (!studioSession) return;
     const dimensions = pngDimensions(src);
@@ -895,6 +957,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
               setEditorId(id);
             }}
             onOpenStudio={openStudio}
+            onOpenZoomStudio={openZoomStudio}
             onGoSheet={() => setTab("sheet")}
             onSendToAdShop={() => handoffToAdShop("selected-or-all", "reeldeck")}
             onSlice={(id) => { const frame = doc.frames.find((f) => f.id === id); if (frame) { setSliceFrame({ ...frame }); setTab("slice"); } }}
@@ -1028,6 +1091,24 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             }
           }}
         />
+      )}
+
+      {zoomOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center text-white">Loading Zoom Studio…</div>}>
+          <ZoomStudioModal
+            isOpen={zoomOpen}
+            onClose={() => setZoomOpen(false)}
+            imageUrl={zoomIndex !== null ? doc.frames[zoomIndex]?.src : undefined}
+            sliceName={zoomIndex !== null ? doc.frames[zoomIndex]?.name : undefined}
+            sliceIndex={zoomIndex}
+            slices={zoomSlices}
+            onNavigateFrame={(idx) => { setZoomIndex(idx); const f = doc.frames[idx]; if (f) setFocusId(f.id); }}
+            onApplyZoomVariations={handleApplyZoomVariations}
+            onOpenInAniPlayer={(frames, idx) => {
+              handleApplyZoomVariations(frames, idx !== null && idx !== undefined ? "replace_frame" : "append_storyboard", idx ?? zoomIndex);
+            }}
+          />
+        </Suspense>
       )}
 
       {studioSession && (
