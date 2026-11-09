@@ -612,7 +612,6 @@ export function AdShop({
             <span className="as-brand-icon"><Icon name="bolt" size={21} strokeWidth={2.6} /></span>
             <span className="as-brand-copy">
               <span className="as-brand-name">AdShop<span className="as-brand-period">.</span></span>
-              <span className="as-brand-subtitle">THE CREATIVE WORKSPACE</span>
             </span>
           </div>
 
@@ -631,8 +630,6 @@ export function AdShop({
           </nav>
 
           <div className="as-header-actions">
-            <span className="as-preview-status"><i /> LOCAL PREVIEW</span>
-            <span className="as-header-divider" />
             <button
               type="button"
               className="as-header-upload"
@@ -704,10 +701,6 @@ export function AdShop({
 
         <main className="as-main">
           <section ref={stageRef} tabIndex={-1} className={`as-stage as-stage--${transform.shape}`} style={stageStyle} aria-label="Display preview">
-            <div className="as-stage-top">
-              <h1><span className="as-stage-index">01</span><span className="as-stage-slash">/</span> THE DISPLAY</h1>
-              <span className="as-stage-live"><i /> {previewPending ? "DRAFT PREVIEW" : "PREVIEW"}</span>
-            </div>
             <div
               className={`as-grid-frame as-grid-frame--${transform.shape}${dragging ? " is-dragging" : ""}`}
               style={{ aspectRatio: String(ratio) }}
@@ -731,24 +724,6 @@ export function AdShop({
                 onShowComplete={animation.completeShow}
               />
               {dragging && <div className="as-drop-overlay"><Icon name="upload" size={26} /><strong>Drop your image here</strong></div>}
-            </div>
-            <div className="as-stage-bottom">
-              <div><Icon name="grid" size={14} /><strong>4 × 4 GRID</strong><span className="as-meta-dot" /> <span>{isTileMode ? `${pageImages.length} IMAGES · ` : ""}{animation.regions.length} PANEL{animation.regions.length === 1 ? "" : "S"}{animation.sequence.activeSlots.length < animation.regions.length ? ` · ${animation.sequence.activeSlots.length} ACTIVE` : ""}</span></div>
-              <button type="button" onClick={() => setTransform({ ...DEFAULT_DISPLAY_TRANSFORM })}>
-                <Icon name="refresh" size={13} /> Reset view
-              </button>
-            </div>
-            <div className="as-live-transport" role="group" aria-label="Display animation transport">
-              <div><i className={animation.running && !previewPending ? "is-playing" : ""} />
-                <span>{previewPending ? "DRAFT · ANIMATIONS HIDDEN" : animation.mode === "show" && animation.show.program
-                  ? describeAiringScene(animation.show.program, animation.scene, animation.show.visible) ?? "SHOW STOPPED"
-                  : `SEQUENCE · ${animation.sequence.playing && !animation.sequence.bypassed ? `STEP ${animation.sequence.currentStep}` : "READY"}`}</span>
-              </div>
-              <button type="button" onClick={animation.toggleTransport} disabled={previewPending}
-                aria-label={animation.running ? "Stop display animation" : `Play ${animation.mode === "show" && animation.show.program ? "show" : "sequence"}`}>
-                {animation.running ? "Stop" : "Play"}
-              </button>
-              {animation.mode === "route" && animation.show.program && <button type="button" onClick={animation.resumeShow} disabled={previewPending}>Play show</button>}
             </div>
           </section>
         </main>
@@ -887,11 +862,27 @@ export function AdShop({
                 <span className="as-quick-icon"><Icon name="eye" size={16} /></span>
                 <span><strong>Numbers</strong><small>{transform.showNumbers ? "On" : "Off"}</small></span>
               </button>
+              <button type="button" onClick={() => setTransform({ ...DEFAULT_DISPLAY_TRANSFORM })} title="Reset display view and transform">
+                <span className="as-quick-icon"><Icon name="refresh" size={16} /></span>
+                <span><strong>Reset view</strong><small>Default</small></span>
+              </button>
             </div>
           </div>}
 
           {settingsSection === "deck" && <div className="as-animation-panel">
             <div className="as-panel-heading"><span><i /> STUDIOS &amp; PANELS</span><span className="as-tools-live">READY</span></div>
+            <div className="as-live-transport" style={{ width: "100%", marginTop: 0 }} role="group" aria-label="Display animation transport">
+              <div><i className={animation.running && !previewPending ? "is-playing" : ""} />
+                <span>{previewPending ? "DRAFT · ANIMATIONS HIDDEN" : animation.mode === "show" && animation.show.program
+                  ? describeAiringScene(animation.show.program, animation.scene, animation.show.visible) ?? "SHOW STOPPED"
+                  : `SEQUENCE · ${animation.sequence.playing && !animation.sequence.bypassed ? `STEP ${animation.sequence.currentStep}` : "READY"}`}</span>
+              </div>
+              <button type="button" onClick={animation.toggleTransport} disabled={previewPending}
+                aria-label={animation.running ? "Stop display animation" : `Play ${animation.mode === "show" && animation.show.program ? "show" : "sequence"}`}>
+                {animation.running ? "Stop" : "Play"}
+              </button>
+              {animation.mode === "route" && animation.show.program && <button type="button" onClick={animation.resumeShow} disabled={previewPending}>Play show</button>}
+            </div>
             <button type="button" className="as-tool-card" disabled={previewPending || preparingStudio}
               onClick={() => openStudio("sequencer")}>
               <span className="as-tool-icon"><Icon name="sliders" size={17} /></span>
@@ -927,11 +918,6 @@ export function AdShop({
           wallPreview={preparedStudio.wall} initialAssets={preparedStudio.assets}
           secondaryImages={animation.sequence.secondaryImages} initialDesk initialMode={studio === "painter" ? "route" : "show"} />}
         {!studio && gridConfigurator}
-
-        <footer className="as-footer">
-          <div><span className="as-footer-mark"><Icon name="bolt" size={12} /></span> ADSHOP <span className="as-footer-separator" /> YOUR CREATIVE STARTING POINT</div>
-          <div><span className="as-footer-dot" /> READY TO CREATE</div>
-        </footer>
       </div>
     </div>
   );
