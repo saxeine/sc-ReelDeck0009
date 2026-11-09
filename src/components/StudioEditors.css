@@ -1,0 +1,158 @@
+.reeldeck-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  outline: none;
+}
+
+/* The original Neo1 toolbar is wider than a phone. Keep every action
+   reachable by scrolling it instead of clipping the save controls. */
+.neo1-navbar {
+  gap: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.neo1-navbar > div {
+  flex-shrink: 0;
+}
+.bubble-header-info, .bubble-header-actions {
+  min-width: 0;
+}
+.bubble-header-info > span {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  /* On narrow screens put the preview above the active controls. */
+  .neo1-workspace {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-rows: minmax(140px, 1fr) minmax(180px, 42%);
+  }
+  .neo1-workspace > aside {
+    grid-area: 2 / 1;
+    width: 52px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .neo1-workspace > aside + div {
+    grid-area: 2 / 2;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+  }
+  .neo1-workspace > .neo1-canvas {
+    grid-area: 1 / 1 / 2 / 3;
+    min-width: 0;
+    min-height: 0;
+    padding: 12px;
+  }
+  .neo1-workspace.panel-hidden > .neo1-canvas {
+    grid-row: 1 / 3;
+  }
+}
+
+@media (max-width: 900px) {
+  .bubble-header {
+    height: auto;
+    min-height: 88px;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 10px;
+  }
+  .bubble-header-info, .bubble-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 5px;
+  }
+  .bubble-header-info > span { max-width: 30%; }
+  .bubble-header-actions > button { flex-shrink: 0; }
+  .bubble-workspace { flex-direction: column-reverse; }
+  .bubble-workspace > aside {
+    width: 100%;
+    min-height: 0;
+    flex: 0 1 50%;
+    border-right: 0;
+    border-top: 1px solid #1e293b;
+  }
+  .bubble-workspace > main {
+    min-height: 160px;
+    padding: 12px;
+  }
+  .bubble-workspace > main img {
+    max-width: 100%;
+    max-height: 31vh;
+  }
+}
+
+@media (max-width: 700px) {
+  /* Keep the two ReelDeck save actions visible without horizontal hunting. */
+  .neo1-navbar {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-rows: 34px 34px;
+    height: auto;
+    gap: 5px;
+    padding: 6px 10px;
+    overflow: hidden;
+  }
+  .neo1-navbar > div:first-child { grid-area: 2 / 1; }
+  .neo1-navbar > div:nth-child(2) {
+    grid-area: 2 / 2;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .neo1-navbar > div:nth-child(3) {
+    grid-area: 1 / 1 / 2 / 3;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .neo1-navbar #neo1_toggle_badges,
+  .neo1-navbar #neo1_toggle_action_bar,
+  .neo1-navbar #neo1_burn_to_storyboard { display: none; }
+}
+
+.bubble-mobile-close { display: none; }
+@media (max-width: 900px) {
+  .bubble-mobile-close { display: flex; flex-shrink: 0; }
+  .bubble-header-actions #bubba1_studio_modal_btn_54 { display: none; }
+  .bubble-header-actions { justify-content: flex-start; }
+  .bubble-save-notice {
+    position: absolute;
+    right: 10px;
+    top: 90px;
+    max-width: calc(100% - 20px) !important;
+    z-index: 30;
+  }
+  .bubble-workspace > aside > div:first-child { overflow-x: auto; }
+}
+@media (max-width: 360px) {
+  .bubble-header-info > span:not(.bubble-save-notice) { max-width: 14%; }
+  .bubble-header-actions > button {
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 10px;
+    gap: 4px;
+  }
+}
+@media (max-width: 360px) {
+  .neo1-studio > div:first-child { padding-left: 8px; padding-right: 8px; }
+  .neo1-studio > div:first-child > div:nth-child(2) { gap: 3px; margin-right: 3px; }
+}
+
+/* Prevent repeated clicks from queuing competing asynchronous saves. */
+.bubble-header-actions > button:disabled,
+.neo1-navbar #neo1_burn_to_storyboard:disabled,
+.neo1-navbar #neo1_save_to_organiser:disabled,
+.neo1-navbar #neo1_save_as_new_slice:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}

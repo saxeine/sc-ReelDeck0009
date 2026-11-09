@@ -1,0 +1,462 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  AdvertAsset,
+  ChoreoCue,
+  ToastKind,
+} from '../types';
+import {
+  buildChoreoFrame,
+  buildShowPresets,
+  createChoreoCue,
+  cueDurationMs,
+  normalizeCastSlots,
+} from './choreography';
+import { parseChoreographyShow } from './showFile';
+
+interface ChoreographyOptions {
+  pool: AdvertAsset[];
+  cols: number;
+  notify: (text: string, kind?: ToastKind) => void;
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/**
+ * Beat-accurate show state machine. Rendering is derived from cue + monotonic
+ * time, so preview, scrub and live playback all resolve to the same frame.
+ */
+export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
+  const initialPreset = useMemo(() => buildShowPresets(pool)[0], []);
+  const initialProgram = initialPreset?.cues ?? [];
+  const [cues, setCues] = useState<ChoreoCue[]>(initialProgram);
+  const [selectedCueId, setSelectedCueId] = useState(initialProgram[0]?.id ?? '');
+  const [bpmState, setBpmState] = useState(initialPreset?.bpm ?? 120);
+  const [timeScale, setTimeScaleState] = useState(initialPreset?.timeScale ?? 0.65);
+  const [loop, setLoop] = useState(initialPreset?.loop ?? true);
+  const [active, setActive] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [complete, setComplete] = useState(false);
+  const [cueIndex, setCueIndex] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [previewProgress, setPreviewProgress] = useState(0.28);
+
+  const cuesRef = useRef(cues);
+  const bpmRef = useRef(bpmState);
+  const timeScaleRef = useRef(timeScale);
+  const loopRef = useRef(loop);
+  const cueIndexRef = useRef(cueIndex);
+  const elapsedRef = useRef(elapsedMs);
+  const playingRef = useRef(playing);
+
+  cuesRef.current = cues;
+  bpmRef.current = bpmState;
+  timeScaleRef.current = timeScale;
+  loopRef.current = loop;
+  cueIndexRef.current = cueIndex;
+  elapsedRef.current = elapsedMs;
+  playingRef.current = playing;
+
+  const presets = useMemo(() => buildShowPresets(pool), [pool]);
+  const selectedCue = cues.find((cue) => cue.id === selectedCueId) ?? cues[0] ?? null;
+  const currentCue = cues[cueIndex] ?? cues[0] ?? null;
+  const canRun = cues.length > 0 && cues.some((cue) => cue.assetUrls.some(Boolean));
+
+  const setBpm = useCallback((value: number) => setBpmState(clamp(Math.round(value), 20, 240)), []);
+  const setTimeScale = useCallback((value: number) => setTimeScaleState(clamp(value, 0.1, 1.5)), []);
+
+  const updateCue = useCallback((id: string, patch: Partial<ChoreoCue>) => {
+    setCues((previous) =>
+      previous.map((cue) => {
+        if (cue.id !== id) return cue;
+        const assetUrls = patch.assetUrls ?? cue.assetUrls;
+        return {
+          ...cue,
+          ...patch,
+          id: cue.id,
+          assetUrls,
+          castSlots: normalizeCastSlots(patch.castSlots ?? cue.castSlots, assetUrls.length),
+        };
+      })
+    );
+  }, []);
+
+  const addCue = useCallback(() => {
+    const next = createChoreoCue(
+      pool.map((asset) => asset.url),
+      { name: `Scene ${cuesRef.current.length + 1}` }
+    );
+    setCues((previous) => [...previous, next]);
+    setSelectedCueId(next.id);
+    setPreviewProgress(0.28);
+    notify('Scene added to the show timeline', 'success');
+  }, [pool, notify]);
+
+  const duplicateCue = useCallback(
+    (id: string) => {
+      const source = cuesRef.current.find((cue) => cue.id === id);
+      if (!source) return;
+      const copy = createChoreoCue(source.assetUrls, {
+        assetUrls: [...source.assetUrls],
+        name: `${source.name} copy`,
+        motion: source.motion,
+        formation: source.formation,
+        transition: source.transition,
+        direction: source.direction,
+        durationBeats: source.durationBeats,
+        speed: source.speed,
+        intensity: source.intensity,
+        transitionMs: source.transitionMs,
+        castSlots: source.castSlots,
+        accent: source.accent,
+      });
+      const at = cuesRef.current.findIndex((cue) => cue.id === id);
+      setCues((previous) => [...previous.slice(0, at + 1), copy, ...previous.slice(at + 1)]);
+      setSelectedCueId(copy.id);
+      notify('Scene duplicated', 'success');
+    },
+    [notify]
+  );
+
+  const removeCue = useCallback(
+    (id: string) => {
+      setCues((previous) => {
+        const at = previous.findIndex((cue) => cue.id === id);
+        const next = previous.filter((cue) => cue.id !== id);
+        const nextSelected = next[Math.min(Math.max(0, at), Math.max(0, next.length - 1))];
+        setSelectedCueId(nextSelected?.id ?? '');
+        return next;
+      });
+      notify('Scene removed from the show', 'info');
+    },
+    [notify]
+  );
+
+  const moveCue = useCallback((id: string, direction: -1 | 1) => {
+    setCues((previous) => {
+      const at = previous.findIndex((cue) => cue.id === id);
+      const to = at + direction;
+      if (at < 0 || to < 0 || to >= previous.length) return previous;
+      const next = [...previous];
+      [next[at], next[to]] = [next[to], next[at]];
+      return next;
+    });
+  }, []);
+
+  const selectCue = useCallback((id: string) => {
+    setSelectedCueId(id);
+    setPreviewProgress(0.28);
+  }, []);
+
+  const jumpToCue = useCallback((index: number) => {
+    const safe = clamp(index, 0, Math.max(0, cuesRef.current.length - 1));
+    const cue = cuesRef.current[safe];
+    cueIndexRef.current = safe;
+    elapsedRef.current = 0;
+    setCueIndex(safe);
+    setElapsedMs(0);
+    setComplete(false);
+    if (cue) setSelectedCueId(cue.id);
+  }, []);
+
+  const scrubCue = useCallback(
+    (progress: number) => {
+      const safe = clamp(progress, 0, 1);
+      setPreviewProgress(safe);
+      if (!active || !selectedCue) return;
+      const at = cuesRef.current.findIndex((cue) => cue.id === selectedCue.id);
+      if (at < 0) return;
+      const nextElapsed = cueDurationMs(selectedCue, bpmRef.current) * safe;
+      cueIndexRef.current = at;
+      elapsedRef.current = nextElapsed;
+      setCueIndex(at);
+      setElapsedMs(nextElapsed);
+      setComplete(false);
+    },
+    [active, selectedCue]
+  );
+
+  const run = useCallback(() => {
+    if (!canRun) {
+      notify('Add a scene with at least one advert before running the show', 'error');
+      return;
+    }
+    const startIndex = complete ? 0 : clamp(cueIndexRef.current, 0, cuesRef.current.length - 1);
+    if (complete) {
+      cueIndexRef.current = 0;
+      elapsedRef.current = 0;
+      setCueIndex(0);
+      setElapsedMs(0);
+    }
+    setActive(true);
+    setPlaying(true);
+    playingRef.current = true;
+    setComplete(false);
+    const cue = cuesRef.current[startIndex];
+    if (cue) setSelectedCueId(cue.id);
+    notify('Choreography on air — show clock locked', 'success');
+  }, [canRun, complete, notify]);
+
+  const hold = useCallback(() => {
+    if (!active) {
+      notify('The choreography is on standby — run it first', 'info');
+      return;
+    }
+    if (complete) {
+      run();
+      return;
+    }
+    const next = !playingRef.current;
+    playingRef.current = next;
+    setPlaying(next);
+    notify(next ? 'Show clock resumed' : 'Show clock held', next ? 'success' : 'info');
+  }, [active, complete, run, notify]);
+
+  const stop = useCallback(() => {
+    playingRef.current = false;
+    cueIndexRef.current = 0;
+    elapsedRef.current = 0;
+    setActive(false);
+    setPlaying(false);
+    setComplete(false);
+    setCueIndex(0);
+    setElapsedMs(0);
+    notify('Choreography cleared — main LED content only', 'info');
+  }, [notify]);
+
+  const rewind = useCallback(() => {
+    const at = active ? 0 : Math.max(0, cuesRef.current.findIndex((cue) => cue.id === selectedCueId));
+    cueIndexRef.current = at;
+    elapsedRef.current = 0;
+    setCueIndex(at);
+    setElapsedMs(0);
+    setComplete(false);
+    const cue = cuesRef.current[at];
+    if (cue) setSelectedCueId(cue.id);
+    notify('Show rewound to the first beat', 'info');
+  }, [active, selectedCueId, notify]);
+
+  useEffect(() => {
+    if (!active || !playing) return;
+    let raf = 0;
+    let last = performance.now();
+    let lastPaint = last;
+
+    const tick = (now: number) => {
+      if (!playingRef.current) return;
+      const delta = Math.min(100, Math.max(0, now - last));
+      last = now;
+      let index = cueIndexRef.current;
+      let elapsed = elapsedRef.current + delta * timeScaleRef.current;
+      const liveCues = cuesRef.current;
+
+      if (liveCues.length === 0) {
+        playingRef.current = false;
+        setPlaying(false);
+        return;
+      }
+
+      index = clamp(index, 0, liveCues.length - 1);
+      let duration = cueDurationMs(liveCues[index], bpmRef.current);
+      while (elapsed >= duration && playingRef.current) {
+        elapsed -= duration;
+        if (index < liveCues.length - 1) {
+          index += 1;
+        } else if (loopRef.current) {
+          index = 0;
+        } else {
+          elapsed = duration;
+          playingRef.current = false;
+          setPlaying(false);
+          setComplete(true);
+          notify('Choreography complete — final formation held', 'info');
+          break;
+        }
+        duration = cueDurationMs(liveCues[index], bpmRef.current);
+      }
+
+      cueIndexRef.current = index;
+      elapsedRef.current = elapsed;
+      if (now - lastPaint >= 30 || !playingRef.current) {
+        setCueIndex(index);
+        setElapsedMs(elapsed);
+        const cue = liveCues[index];
+        if (cue) setSelectedCueId(cue.id);
+        lastPaint = now;
+      }
+
+      if (playingRef.current) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, playing, notify]);
+
+  /** Load a program that was already submitted to the front page. */
+  const loadShow = useCallback(
+    (
+      nextCues: ChoreoCue[],
+      options?: { bpm?: number; timeScale?: number; loop?: boolean }
+    ) => {
+      playingRef.current = false;
+      cueIndexRef.current = 0;
+      elapsedRef.current = 0;
+      setCues(nextCues);
+      setSelectedCueId(nextCues[0]?.id ?? '');
+      setCueIndex(0);
+      setElapsedMs(0);
+      setComplete(false);
+      setActive(false);
+      setPlaying(false);
+      if (typeof options?.bpm === 'number') setBpm(options.bpm);
+      if (typeof options?.timeScale === 'number') setTimeScale(options.timeScale);
+      if (typeof options?.loop === 'boolean') setLoop(options.loop);
+    },
+    [setBpm, setTimeScale]
+  );
+
+  const loadPreset = useCallback(
+    (id: string) => {
+      const preset = presets.find((item) => item.id === id);
+      if (!preset) return;
+      playingRef.current = false;
+      cueIndexRef.current = 0;
+      elapsedRef.current = 0;
+      setActive(false);
+      setPlaying(false);
+      setComplete(false);
+      setCueIndex(0);
+      setElapsedMs(0);
+      setCues(preset.cues);
+      setSelectedCueId(preset.cues[0]?.id ?? '');
+      setLoop(preset.loop ?? true);
+      setTimeScale(preset.timeScale ?? 0.65);
+      setBpm(preset.bpm ?? 120);
+      notify(`${preset.name} loaded — ${preset.cues.length} scenes ready`, 'success');
+    },
+    [presets, notify, setBpm, setTimeScale]
+  );
+
+  const exportShow = useCallback(() => {
+    const payload = {
+      schema: 'gridline.choreography/v2',
+      title: 'Gridline perimeter show',
+      exportedAt: new Date().toISOString(),
+      bpm: bpmRef.current,
+      timeScale: timeScaleRef.current,
+      loop: loopRef.current,
+      cues: cuesRef.current,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'gridline-perimeter-show.json';
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    notify('Show file exported', 'success');
+  }, [notify]);
+
+  const importShow = useCallback(
+    (raw: string) => {
+      try {
+        const parsed = parseChoreographyShow(raw);
+        const next = parsed.cues;
+        playingRef.current = false;
+        cueIndexRef.current = 0;
+        elapsedRef.current = 0;
+        setCues(next);
+        setBpm(parsed.bpm);
+        setTimeScale(parsed.timeScale);
+        setLoop(parsed.loop);
+        setSelectedCueId(next[0].id);
+        setCueIndex(0);
+        setElapsedMs(0);
+        setComplete(false);
+        setActive(false);
+        setPlaying(false);
+        notify(`Imported ${next.length} choreography scene${next.length === 1 ? '' : 's'}`, 'success');
+      } catch {
+        notify('This is not a valid Gridline choreography file', 'error');
+      }
+    },
+    [notify, setBpm, setTimeScale]
+  );
+
+  const frame = useMemo(
+    () => (currentCue ? buildChoreoFrame(currentCue, elapsedMs, bpmState, cols) : null),
+    [currentCue, elapsedMs, bpmState, cols]
+  );
+  const previewFrame = useMemo(() => {
+    if (!selectedCue) return null;
+    return buildChoreoFrame(
+      selectedCue,
+      cueDurationMs(selectedCue, bpmState) * previewProgress,
+      bpmState,
+      cols
+    );
+  }, [selectedCue, previewProgress, bpmState, cols]);
+
+  const totalDurationMs = useMemo(
+    () => cues.reduce((sum, cue) => sum + cueDurationMs(cue, bpmState), 0) / timeScale,
+    [cues, bpmState, timeScale]
+  );
+  const playheadMs = useMemo(
+    () =>
+      (cues.slice(0, cueIndex).reduce((sum, cue) => sum + cueDurationMs(cue, bpmState), 0) + elapsedMs) /
+      timeScale,
+    [cues, cueIndex, elapsedMs, bpmState, timeScale]
+  );
+
+  const statusLabel = !active
+    ? { label: 'standby', tone: 'standby' as const }
+    : complete
+      ? { label: 'complete', tone: 'done' as const }
+      : playing
+        ? { label: 'show on air', tone: 'air' as const }
+        : { label: 'show held', tone: 'paused' as const };
+
+  return {
+    cues,
+    selectedCue,
+    selectedCueId,
+    currentCue,
+    cueIndex,
+    elapsedMs,
+    previewProgress,
+    bpm: bpmState,
+    timeScale,
+    loop,
+    active,
+    playing,
+    complete,
+    canRun,
+    frame,
+    previewFrame,
+    totalDurationMs,
+    playheadMs,
+    statusLabel,
+    presets,
+    setBpm,
+    setTimeScale,
+    setLoop,
+    setPreviewProgress,
+    updateCue,
+    addCue,
+    duplicateCue,
+    removeCue,
+    moveCue,
+    selectCue,
+    jumpToCue,
+    scrubCue,
+    loadPreset,
+    loadShow,
+    exportShow,
+    importShow,
+    run,
+    hold,
+    stop,
+    rewind,
+  };
+}
+
+export type ChoreographyEngine = ReturnType<typeof useChoreography>;
