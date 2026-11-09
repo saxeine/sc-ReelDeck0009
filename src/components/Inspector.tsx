@@ -23,6 +23,8 @@ export function Inspector({
   onDuplicate,
   onOpenEditor,
   onOpenStudio,
+  onOpenZoomStudio,
+  onOpenAniPlayer,
   onComment,
   onDeleteComment,
   onReplace,
@@ -38,6 +40,8 @@ export function Inspector({
   onDuplicate: () => void;
   onOpenEditor: () => void;
   onOpenStudio: (kind: "neo1" | "bubble") => void;
+  onOpenZoomStudio?: () => void;
+  onOpenAniPlayer?: () => void;
   onComment: (text: string) => void;
   onDeleteComment: (id: string) => void;
   onReplace: (file: File) => void;
@@ -106,6 +110,12 @@ export function Inspector({
             <Btn size="xs" icon="text" variant="cool" onClick={() => onOpenStudio("neo1")}>Neo1 Studio</Btn>
             <Btn size="xs" icon="comment" onClick={() => onOpenStudio("bubble")}>Bubble Studio</Btn>
           </div>
+          {onOpenZoomStudio && (
+            <Btn size="xs" icon="expand" variant="cool" className="mt-1.5 w-full" onClick={onOpenZoomStudio}>Zoom Studio</Btn>
+          )}
+          {onOpenAniPlayer && (
+            <Btn size="xs" icon="film" variant="cool" className="mt-1.5 w-full" onClick={onOpenAniPlayer}>AniPlayer</Btn>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
