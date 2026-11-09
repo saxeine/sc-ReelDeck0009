@@ -142,9 +142,9 @@ export default function App() {
   const [theme, setThemeState] = useState<ThemeKey>(() =>
     loadTheme()
   );
-  const [previewCollapsed, setPreviewCollapsed] = useState(
-    prefs.current.previewCollapsed ?? false
-  );
+  // Always-visible live preview — never collapsed/hidden (per "always show preview")
+  const [_previewCollapsed] = useState(false);
+  void _previewCollapsed;
 
   const searchRef = useRef<HTMLInputElement>(null);
   const adShopStageRef = useRef<HTMLElement>(null);
@@ -272,7 +272,7 @@ export default function App() {
             views: views.filter((v) => !v.builtin),
             density,
             theme,
-            previewCollapsed,
+            previewCollapsed: false,
           })
         );
       } catch {
@@ -280,7 +280,7 @@ export default function App() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [doc.sheet, handoff, views, density, theme, previewCollapsed]);
+  }, [doc.sheet, handoff, views, density, theme]);
 
   /* ------------------------------ operations ------------------------------ */
   const importFiles = useCallback(
@@ -1063,7 +1063,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         </div>
       </main>
 
-      {/* ---------------- always-on preview ---------------- */}
+      {/* ---------------- always-on preview (forced visible, never collapsed/hidden) ---------------- */}
       <PreviewDock
         preview={preview}
         width={info?.width ?? 0}
@@ -1072,9 +1072,9 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         themeLabel={THEMES[doc.sheet.theme].label}
         rendering={rendering}
         renderMs={renderMs}
-        collapsed={previewCollapsed}
-        locked={tab === "sheet"}
-        onToggle={() => setPreviewCollapsed((c) => !c)}
+        collapsed={false}
+        locked={false}
+        onToggle={() => {}}
         onOpenSheet={() => setTab("sheet")}
         onExport={() => exportSheet("png")}
         onCopy={copySheet}

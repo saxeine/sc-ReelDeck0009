@@ -1,10 +1,10 @@
 import { cn } from "../utils/cn";
 import { Icon } from "./Icon";
-import { Btn, IconBtn } from "./ui";
+import { Btn } from "./ui";
 
 /**
- * Always-on live preview of the rendered contact sheet.
- * Collapses to a slim strip but never disappears from the workspace.
+ * Always-on live preview — per "always show preview", the dock is permanently
+ * expanded (188px) and never collapsed/hidden, on any tab.
  */
 export function PreviewDock({
   preview,
@@ -38,7 +38,9 @@ export function PreviewDock({
   onCopy: () => void;
   onHandoff: () => void;
 }) {
-  const slim = collapsed || locked;
+  // Always-visible policy: ignore collapsed/locked and force expanded view
+  const slim = false;
+  void collapsed; void locked; void onToggle;
 
   return (
     <section
@@ -133,14 +135,10 @@ export function PreviewDock({
         </div>
       </div>
 
-      {!locked && (
-        <IconBtn
-          icon={collapsed ? "up" : "down"}
-          label={collapsed ? "Expand preview" : "Collapse preview"}
-          onClick={onToggle}
-          className="my-auto"
-        />
-      )}
+      {/* collapse toggle removed — preview is always shown expanded */}
+      <span className="my-auto hidden sm:flex items-center gap-1 rounded-full border border-line bg-ink-850 px-2 py-1 font-mono text-[9px] text-dim" aria-hidden>
+        <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse" /> ALWAYS ON
+      </span>
     </section>
   );
 }
