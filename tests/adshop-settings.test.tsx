@@ -61,9 +61,9 @@ function flushFrames() {
     callbacks.forEach((callback) => callback(performance.now()));
   });
 }
-function openSettings(section: "image" | "display" | "deck") {
+function openSettings(section: "image" | "display" | "deck" | "appearance") {
   click(".as-header-settings");
-  const index = { image: 1, display: 2, deck: 3 }[section];
+  const index = { image: 1, display: 2, deck: 3, appearance: 4 }[section];
   click(`.as-settings-menu-item:nth-of-type(${index})`);
   expect(element<HTMLDialogElement>(".as-settings-dialog").open).toBe(true);
 }
@@ -111,7 +111,7 @@ describe("AdShop settings", () => {
     click(".as-header-settings");
     expect(element(".as-header-settings").getAttribute("aria-expanded")).toBe("true");
     expect([...container.querySelectorAll(".as-settings-menu-item strong")].map((item) => item.textContent))
-      .toEqual(["Your image", "Display controls", "Live Control Deck"]);
+      .toEqual(["Your image", "Display controls", "Live Control Deck", "Appearance & theme"]);
     act(() => document.body.dispatchEvent(new Event("pointerdown", { bubbles: true })));
     expect(container.querySelector(".as-settings-menu")).toBeNull();
 
@@ -243,5 +243,14 @@ describe("AdShop settings", () => {
     expect(element(".as-settings-dialog [role=alert]").textContent).toContain("The selected image is no longer available");
     expect(element<HTMLButtonElement>(".as-tool-card:nth-of-type(1)").disabled).toBe(false);
     expect(container.querySelector('[aria-label="Sequencer"]')).toBeNull();
+  });
+
+  it("allows switching theme from the appearance settings", () => {
+    openSettings("appearance");
+    expect(element(".as-settings-dialog").textContent).toContain("Look & feel");
+    const themeButtons = container.querySelectorAll(".as-theme-option");
+    expect(themeButtons.length).toBe(4);
+    closeSettings();
+    expect(document.activeElement).toBe(element(".as-header-settings"));
   });
 });

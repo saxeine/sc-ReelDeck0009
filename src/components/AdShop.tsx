@@ -18,6 +18,9 @@ import {
   type DisplayShape,
   type DisplayTransform,
 } from "./AdShopGrid";
+import { THEME_OPTIONS, type ThemeKey } from "../lib/theme";
+import { CustomizableContainer } from "./CustomizableContainer";
+import { cn } from "../utils/cn";
 import "./AdShop.css";
 
 interface DisplaySource {
@@ -63,12 +66,13 @@ function releaseSnapshotUploads(snapshot: DisplaySnapshot, keep: string | null) 
 }
 
 type StudioKind = "sequencer" | "choreographer" | "painter";
-type SettingsSection = "image" | "display" | "deck";
+type SettingsSection = "image" | "display" | "deck" | "appearance";
 
 const SETTINGS_SECTIONS: Record<SettingsSection, { title: string; description: string; icon: string; eyebrow: string }> = {
   image: { title: "Your image", description: "Upload or choose ReelDeck artwork", icon: "image", eyebrow: "IMAGE SOURCE" },
   display: { title: "Display controls", description: "Shape, spacing, fit and rotation", icon: "sliders", eyebrow: "MAKE IT YOURS" },
   deck: { title: "Live Control Deck", description: "Sequences, choreography and panels", icon: "layers", eyebrow: "CREATIVE TOOLS" },
+  appearance: { title: "Appearance & theme", description: "Workspace palette and styling", icon: "palette", eyebrow: "Look & feel" },
 };
 
 interface PreparedStudio {
@@ -184,6 +188,8 @@ export function AdShop({
   stageRef,
   commitButtonRef,
   onCommitAndReturn,
+  theme,
+  onTheme,
 }: {
   onOpenSlice: () => void;
   onOpenReelDeck: () => void;
@@ -193,6 +199,8 @@ export function AdShop({
   stageRef: RefObject<HTMLElement | null>;
   commitButtonRef: RefObject<HTMLButtonElement | null>;
   onCommitAndReturn: () => void;
+  theme?: ThemeKey;
+  onTheme?: (key: ThemeKey) => void;
 }) {
   const [source, setSource] = useState<DisplaySource>(DEMO_SOURCE);
   const [uploadedSource, setUploadedSource] = useState<DisplaySource | null>(null);
@@ -616,10 +624,6 @@ export function AdShop({
           </div>
 
           <nav className="as-workflow" aria-label="Creative workspace">
-            <button type="button" onClick={() => navigateAway(onOpenSlice)} title="Open Slice Studio">
-              <Icon name="crop" size={16} /> <span>Slice Studio</span>
-            </button>
-            <Icon className="as-workflow-arrow" name="right" size={12} />
             <span className="as-workflow-active" aria-current="page">
               <Icon name="grid" size={16} /> <span>AdShop</span>
             </span>
@@ -900,6 +904,59 @@ export function AdShop({
             </button>
             <p>{previewPending ? "Commit or cancel the ReelDeck preview to edit the live display." : preparingStudio ? "Preparing artwork…" : "Both studios share this display’s route and panel layout."}</p>
           </div>}
+
+          {settingsSection === "appearance" && (
+            <CustomizableContainer
+              ibcId="adshop_settings_appearance_panel"
+              componentType="panel"
+              defaultTitle="Appearance & theme"
+              className="as-control-panel"
+            >
+              <div className="as-panel-heading">
+                <span><i /> Theme &amp; palette</span>
+                <span>{THEME_OPTIONS.find((t) => t.key === (theme ?? "dark"))?.label ?? "Darkroom"}</span>
+              </div>
+              <div className="space-y-2 mt-3">
+                {THEME_OPTIONS.map((t) => {
+                  const on = (theme ?? "dark") === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => onTheme?.(t.key)}
+                      className={cn(
+                        "as-theme-option flex w-full items-center gap-3 p-3 rounded-xl border text-left transition-all",
+                        on
+                          ? "border-amber/60 bg-amber/15 shadow-[0_0_12px_rgba(255,171,31,0.15)]"
+                          : "border-slate-800 bg-[#0d1927] hover:border-slate-600 hover:bg-[#112235]"
+                      )}
+                    >
+                      <span
+                        className="flex h-8 w-11 shrink-0 items-end gap-[2px] overflow-hidden rounded-[4px] p-1 border border-slate-700/60"
+                        style={{ background: t.swatch.bg }}
+                      >
+                        <span className="h-3 flex-1 rounded-[1px]" style={{ background: t.swatch.panel }} />
+                        <span className="h-4 flex-1 rounded-[1px]" style={{ background: t.swatch.accent }} />
+                        <span className="h-2 flex-1 rounded-[1px]" style={{ background: t.swatch.ink }} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("text-xs font-semibold", on ? "text-amber" : "text-slate-100")}>
+                            {t.label}
+                          </span>
+                          {t.key === "dark" && (
+                            <span className="text-[10px] text-slate-400 font-mono">(Default)</span>
+                          )}
+                        </div>
+                        <span className="block text-[11px] text-slate-400 mt-0.5">{t.hint}</span>
+                      </div>
+                      {on && <Icon name="check" size={16} className="text-amber shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </CustomizableContainer>
+          )}
         </SettingsDialog>}
         {error && !settingsSection && <div className="as-error-notice" role="alert">
           <span>{error}</span><button type="button" aria-label="Dismiss error" onClick={() => setError("")}><Icon name="x" size={14} /></button>

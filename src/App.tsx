@@ -7,7 +7,6 @@ import { Icon } from "./components/Icon";
 import { PreviewDock } from "./components/PreviewDock";
 import { SheetView } from "./components/SheetView";
 import { SliceView } from "./components/SliceView";
-import { ThemeMenu } from "./components/ThemeMenu";
 import { StudioDialog } from "./components/StudioDialog";
 import { Btn, IconBtn } from "./components/ui";
 import {
@@ -123,6 +122,7 @@ export default function App() {
   );
   const [editorId, setEditorId] = useState<string | null>(null);
   const [studioSession, setStudioSession] = useState<StudioSession | null>(null);
+  const [slateOpen, setSlateOpen] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const [aniOpen, setAniOpen] = useState(false);
@@ -787,6 +787,8 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
           commitButtonRef={adShopCommitRef}
           handoff={adShopHandoff}
           reelDeckCount={doc.frames.length}
+          theme={theme}
+          onTheme={setThemeState}
           onLoadReelDeck={() => handoffToAdShop("all", "adshop")}
           onOpenSlice={() => openWorkspace("slice")}
           onOpenReelDeck={() => openWorkspace("board")}
@@ -852,7 +854,20 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <ThemeMenu theme={theme} onTheme={setThemeState} />
+          <button
+            type="button"
+            onClick={() => setSlateOpen((v) => !v)}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-[5px] border px-2.5 text-[11px] font-semibold transition-all focus-ring",
+              slateOpen
+                ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_10px_rgba(255,171,31,0.2)]"
+                : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
+            )}
+            title={slateOpen ? "Hide slate panel" : "Show slate panel"}
+          >
+            <Icon name="film" size={13} />
+            <span>{slateOpen ? "Hide slate" : "Slate"}</span>
+          </button>
           <div className="mx-0.5 hidden h-5 w-px bg-line sm:block" />
           <IconBtn
             icon="undo"
@@ -915,36 +930,38 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
       </header>
 
       {/* ---------------- slate strip ---------------- */}
-      <div className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line bg-gradient-to-r from-ink-800 via-ink-850 to-ink-900 px-3 py-1.5">
-        <span className="hatch hidden h-7 w-10 shrink-0 rounded-[3px] border border-line sm:block" />
-        <input
-          value={doc.title}
-          onChange={(e) => dispatch({ type: "SET_META", patch: { title: e.target.value }, merge: "title" })}
-          placeholder="Untitled board"
-          className="display w-[190px] shrink-0 rounded border border-transparent bg-transparent px-1 text-[24px] text-bone transition-colors hover:border-ink-600 focus:border-amber focus:bg-ink-900 focus:outline-none sm:w-[280px]"
-        />
-        <input
-          value={doc.logline}
-          onChange={(e) => dispatch({ type: "SET_META", patch: { logline: e.target.value }, merge: "logline" })}
-          placeholder="Logline — one sentence the model can build against…"
-          className="hidden min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-1 text-[11.5px] text-mute transition-colors hover:border-ink-600 focus:border-amber focus:bg-ink-900 focus:text-bone focus:outline-none md:block"
-        />
-        <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10px] text-dim">
-          <span className="hidden rounded border border-ink-600 bg-ink-850 px-1.5 py-0.5 lg:inline">
-            ROLL A01
-          </span>
-          <span className="rounded border border-ink-600 bg-ink-850 px-1.5 py-0.5">
-            {doc.frames.length} FR
-          </span>
-          <span className="rounded border border-amber/40 bg-amber/10 px-1.5 py-0.5 text-amber">
-            {timecode(runtime)}
-          </span>
-          <span className="flex items-center gap-1 text-danger">
-            <span className="h-1.5 w-1.5 rounded-full bg-danger rec" />
-            LIVE
-          </span>
+      {slateOpen && (
+        <div className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line bg-gradient-to-r from-ink-800 via-ink-850 to-ink-900 px-3 py-1.5 animate-in fade-in duration-150">
+          <span className="hatch hidden h-7 w-10 shrink-0 rounded-[3px] border border-line sm:block" />
+          <input
+            value={doc.title}
+            onChange={(e) => dispatch({ type: "SET_META", patch: { title: e.target.value }, merge: "title" })}
+            placeholder="Untitled board"
+            className="display w-[190px] shrink-0 rounded border border-transparent bg-transparent px-1 text-[24px] text-bone transition-colors hover:border-ink-600 focus:border-amber focus:bg-ink-900 focus:outline-none sm:w-[280px]"
+          />
+          <input
+            value={doc.logline}
+            onChange={(e) => dispatch({ type: "SET_META", patch: { logline: e.target.value }, merge: "logline" })}
+            placeholder="Logline — one sentence the model can build against…"
+            className="hidden min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-1 text-[11.5px] text-mute transition-colors hover:border-ink-600 focus:border-amber focus:bg-ink-900 focus:text-bone focus:outline-none md:block"
+          />
+          <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10px] text-dim">
+            <span className="hidden rounded border border-ink-600 bg-ink-850 px-1.5 py-0.5 lg:inline">
+              ROLL A01
+            </span>
+            <span className="rounded border border-ink-600 bg-ink-850 px-1.5 py-0.5">
+              {doc.frames.length} FR
+            </span>
+            <span className="rounded border border-amber/40 bg-amber/10 px-1.5 py-0.5 text-amber">
+              {timecode(runtime)}
+            </span>
+            <span className="flex items-center gap-1 text-danger">
+              <span className="h-1.5 w-1.5 rounded-full bg-danger rec" />
+              LIVE
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ---------------- workspace ---------------- */}
       <main className="relative z-10 flex min-h-0 flex-1">

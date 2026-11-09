@@ -107,13 +107,24 @@ export function BoardView(p: Props) {
   return (
     <div className="flex min-h-0 flex-1">
       {/* ---------------- left rail ---------------- */}
-      <aside
-        className={cn(
-          "absolute inset-y-0 left-0 z-30 flex w-[248px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-ink-900/98 p-3 backdrop-blur transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 lg:bg-ink-900/60",
-          railOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
-        )}
-      >
-        <div
+      {railOpen && (
+        <aside
+          className="relative z-30 flex w-[248px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-ink-900/98 p-3 backdrop-blur transition-all duration-300 lg:bg-ink-900/60"
+        >
+          <div className="flex items-center justify-between border-b border-line/40 pb-1">
+            <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-bone">
+              <Icon name="sliders" size={12} className="text-amber" /> Library &amp; filters
+            </span>
+            <button
+              type="button"
+              onClick={() => setRailOpen(false)}
+              className="rounded p-1 text-dim transition-colors hover:bg-ink-800 hover:text-bone"
+              title="Hide panel"
+            >
+              <Icon name="x" size={13} />
+            </button>
+          </div>
+          <div
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -338,13 +349,6 @@ export function BoardView(p: Props) {
           </Btn>
         </div>
       </aside>
-
-      {railOpen && (
-        <button
-          className="absolute inset-0 z-20 bg-ink-950/70 lg:hidden"
-          onClick={() => setRailOpen(false)}
-          aria-label="Close filters"
-        />
       )}
 
       {/* ---------------- board ---------------- */}
@@ -372,7 +376,20 @@ export function BoardView(p: Props) {
       >
         {/* toolbar */}
         <div className="flex flex-wrap items-center gap-2 border-b border-line bg-ink-850/80 px-3 py-2">
-          <IconBtn icon="sliders" label="Filters" className="lg:hidden" onClick={() => setRailOpen(true)} />
+          <button
+            type="button"
+            onClick={() => setRailOpen((v) => !v)}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded-[5px] border px-2.5 text-[11px] font-medium transition-all focus-ring",
+              railOpen
+                ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_8px_rgba(255,171,31,0.2)]"
+                : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
+            )}
+            title={railOpen ? "Hide filters & library panel" : "Show filters & library panel"}
+          >
+            <Icon name="sliders" size={12} />
+            <span>{railOpen ? "Hide filters" : "Filters & library"}</span>
+          </button>
           <button
             onClick={() =>
               p.setSelected(selected.length === visible.length ? [] : visible.map((f) => f.id))

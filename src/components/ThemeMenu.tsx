@@ -35,23 +35,23 @@ export function ThemeMenu({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title={`Appearance — ${current.label}`}
-        aria-label="Change theme"
+        title="Settings & Appearance"
+        aria-label="Settings"
         aria-expanded={open}
         className={cn(
-          "flex h-8 items-center gap-1.5 rounded-[5px] border px-2 transition-all duration-150 active:scale-95 focus-ring",
+          "flex h-8 items-center gap-1.5 rounded-[5px] border px-2.5 transition-all duration-150 active:scale-95 focus-ring",
           open
             ? "border-amber/70 bg-amber/15 text-amber"
             : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
         )}
       >
-        <Icon name="palette" size={14} />
-        <span className="hidden text-[11px] font-medium md:inline">{current.label}</span>
+        <Icon name="settings" size={14} />
+        <span className="hidden text-[11px] font-medium sm:inline">Settings</span>
         <span className="flex items-center gap-[2px]">
           {[current.swatch.bg, current.swatch.line, current.swatch.accent].map((c, i) => (
             <span
               key={i}
-              className="h-[9px] w-[5px] rounded-[1px] border border-bone/20"
+              className="h-[8px] w-[4px] rounded-[1px] border border-bone/20"
               style={{ background: c }}
             />
           ))}
@@ -60,8 +60,16 @@ export function ThemeMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-[236px] overflow-hidden rounded-[7px] border border-line bg-ink-900/98 p-1.5 shadow-[0_24px_50px_-18px_rgba(0,0,0,0.85)] backdrop-blur pop">
-          <div className="px-1.5 pb-1 pt-0.5 tk text-dim">Appearance</div>
+        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-[248px] overflow-hidden rounded-[7px] border border-line bg-ink-900/98 p-1.5 shadow-[0_24px_50px_-18px_rgba(0,0,0,0.85)] backdrop-blur pop">
+          <div className="flex items-center justify-between border-b border-line/40 px-2 py-1 pb-1.5">
+            <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-bone">
+              <Icon name="settings" size={12} className="text-amber" /> Settings
+            </span>
+            <span className="font-mono text-[9px] text-dim uppercase">ReelDeck</span>
+          </div>
+          <div className="px-1.5 pb-1 pt-1.5 tk text-dim flex items-center gap-1">
+            <Icon name="palette" size={11} /> Appearance &amp; theme
+          </div>
           {THEME_OPTIONS.map((t) => {
             const on = t.key === theme;
             return (
