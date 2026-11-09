@@ -74,7 +74,6 @@ interface Prefs {
   views?: SavedView[];
   density?: number;
   theme?: ThemeKey;
-  previewCollapsed?: boolean;
 }
 
 function loadPrefs(): Prefs {
@@ -141,9 +140,6 @@ export default function App() {
   const [preview, setPreview] = useState<string | null>(null);
   const [theme, setThemeState] = useState<ThemeKey>(() =>
     loadTheme()
-  );
-  const [previewCollapsed, setPreviewCollapsed] = useState(
-    prefs.current.previewCollapsed ?? false
   );
 
   const searchRef = useRef<HTMLInputElement>(null);
@@ -272,7 +268,6 @@ export default function App() {
             views: views.filter((v) => !v.builtin),
             density,
             theme,
-            previewCollapsed,
           })
         );
       } catch {
@@ -280,7 +275,7 @@ export default function App() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [doc.sheet, handoff, views, density, theme, previewCollapsed]);
+  }, [doc.sheet, handoff, views, density, theme]);
 
   /* ------------------------------ operations ------------------------------ */
   const importFiles = useCallback(
@@ -858,15 +853,16 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             type="button"
             onClick={() => setSlateOpen((v) => !v)}
             className={cn(
-              "flex h-8 items-center gap-1.5 rounded-[5px] border px-2.5 text-[11px] font-semibold transition-all focus-ring",
+              "flex h-8 w-8 items-center justify-center rounded-[5px] border transition-all focus-ring",
               slateOpen
                 ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_10px_rgba(255,171,31,0.2)]"
                 : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
             )}
             title={slateOpen ? "Hide slate panel" : "Show slate panel"}
+            aria-label={slateOpen ? "Hide slate panel" : "Show slate panel"}
+            aria-expanded={slateOpen}
           >
-            <Icon name="film" size={13} />
-            <span>{slateOpen ? "Hide slate" : "Slate"}</span>
+            <Icon name={slateOpen ? "eye" : "eyeOff"} size={14} />
           </button>
           <div className="mx-0.5 hidden h-5 w-px bg-line sm:block" />
           <IconBtn
@@ -1089,9 +1085,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         themeLabel={THEMES[doc.sheet.theme].label}
         rendering={rendering}
         renderMs={renderMs}
-        collapsed={previewCollapsed}
         locked={tab === "sheet"}
-        onToggle={() => setPreviewCollapsed((c) => !c)}
         onOpenSheet={() => setTab("sheet")}
         onExport={() => exportSheet("png")}
         onCopy={copySheet}

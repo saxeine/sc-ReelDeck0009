@@ -180,7 +180,6 @@ function RangeControl({
 }
 
 export function AdShop({
-  onOpenSlice,
   onOpenReelDeck,
   onLoadReelDeck,
   reelDeckCount,

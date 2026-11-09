@@ -186,6 +186,14 @@ const P: Record<string, ReactNode> = {
       <circle cx="12" cy="12" r="3" />
     </>
   ),
+  eyeOff: (
+    <>
+      <path d="M10.6 5.2A10.7 10.7 0 0112 5c5.5 0 9 7 9 7a15.8 15.8 0 01-3.1 4.2" />
+      <path d="M6.6 6.6C4.1 8.2 2.5 12 2.5 12s3.5 7 9.5 7c1.3 0 2.5-.3 3.5-.7" />
+      <path d="m3 3 18 18" />
+      <path d="M9.9 9.9a3 3 0 004.2 4.2" />
+    </>
+  ),
   sliders: <path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 4v6M7 14v6" />,
   settings: (
     <>

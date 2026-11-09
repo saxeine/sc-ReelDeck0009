@@ -71,6 +71,9 @@ export function BoardView(p: Props) {
   const focusIndex = focus ? doc.frames.findIndex((f) => f.id === focus.id) : -1;
   // Bulk selection must be narrowed to one frame before opening a studio.
   const studioFrameId = selected.length === 1 ? selected[0] : selected.length === 0 ? focus?.id : undefined;
+  const adShopActionLabel = selected.length
+    ? `Send ${selected.length} selected frame${selected.length === 1 ? "" : "s"} to AdShop`
+    : `Send all ${doc.frames.length} frames to AdShop`;
   const canReorder = filters.sort === "sequence";
   const counts = useMemo(() => {
     const c = { draft: 0, approved: 0, rework: 0 };
@@ -380,15 +383,16 @@ export function BoardView(p: Props) {
             type="button"
             onClick={() => setRailOpen((v) => !v)}
             className={cn(
-              "flex h-7 items-center gap-1.5 rounded-[5px] border px-2.5 text-[11px] font-medium transition-all focus-ring",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] border transition-all focus-ring",
               railOpen
                 ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_8px_rgba(255,171,31,0.2)]"
                 : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
             )}
             title={railOpen ? "Hide filters & library panel" : "Show filters & library panel"}
+            aria-label={railOpen ? "Hide filters and library" : "Show filters and library"}
+            aria-expanded={railOpen}
           >
-            <Icon name="sliders" size={12} />
-            <span>{railOpen ? "Hide filters" : "Filters & library"}</span>
+            <Icon name={railOpen ? "eye" : "eyeOff"} size={14} />
           </button>
           <button
             onClick={() =>
@@ -410,9 +414,10 @@ export function BoardView(p: Props) {
             variant="cool"
             disabled={!doc.frames.length}
             onClick={p.onSendToAdShop}
-            title={selected.length ? `Send ${selected.length} selected frame${selected.length === 1 ? "" : "s"} to AdShop` : `Send all ${doc.frames.length} frames to AdShop`}
+            title={adShopActionLabel}
+            aria-label={adShopActionLabel}
           >
-            {selected.length ? `Send ${selected.length} selected` : "Send all"} to AdShop
+            {selected.length ? `Send ${selected.length} selected to AdShop` : "2AdShop"}
           </Btn>
 
           <Btn size="xs" icon="text" disabled={!studioFrameId}
