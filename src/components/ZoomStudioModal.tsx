@@ -25,7 +25,9 @@ import {
   Archive,
   Activity,
   FastForward,
+  Images,
 } from "lucide-react";
+import { addLibraryAssets } from "../services/assetLibrary";
 import {
   DEFAULT_ZOOM_CONFIG,
   ZOOM_PRESETS,
@@ -314,6 +316,14 @@ export function ZoomStudioModal({
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast("GIF exported");
     } catch { showToast("GIF export failed"); }
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (!generatedFrames.length) return;
+    try {
+      await addLibraryAssets(generatedFrames.map((frame) => ({ name: frame.name, origin: "zoom", src: frame.url, tags: ["zoom-studio"] })));
+      showToast(`${generatedFrames.length} frames saved to the library`);
+    } catch { showToast("Could not save to the library"); }
   };
 
   if (!isOpen) return null;
@@ -714,6 +724,7 @@ export function ZoomStudioModal({
             <div className="flex items-center gap-1.5">
               <button onClick={handleExportZip} disabled={!generatedFrames.length} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5"><Archive className="w-3.5 h-3.5" /> ZIP</button>
               <button onClick={handleExportGif} disabled={!generatedFrames.length} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> GIF</button>
+              <button onClick={() => void handleSaveToLibrary()} disabled={!generatedFrames.length} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5"><Images className="w-3.5 h-3.5" /> To library</button>
               <div className="w-px h-5 bg-slate-700 mx-1" />
               <button onClick={() => { handleConfigChange(p => ({ ...p, extraFrames: Math.max(1, p.extraFrames -1) })); }} className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs">− frame</button>
               <button onClick={() => { handleConfigChange(p => ({ ...p, extraFrames: Math.min(24, p.extraFrames +1) })); }} className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs">+ frame</button>

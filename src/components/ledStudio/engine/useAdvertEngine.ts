@@ -616,6 +616,23 @@ export function useAdvertEngine({ cols, panelCount, notify, initialAssets }: Adv
     [notify]
   );
 
+  /** Batch-add artwork pulled from the asset provider library. */
+  const addLibraryAssets = useCallback(
+    (items: { name: string; url: string }[]) => {
+      if (items.length === 0) return;
+      const stamp = Date.now();
+      const added: AdvertAsset[] = items.map((item, i) => ({
+        id: `library-${stamp}-${i}`,
+        name: item.name,
+        url: item.url,
+        source: 'upload',
+      }));
+      setPool((prev) => [...prev, ...added]);
+      notify(`Added ${added.length} library image${added.length > 1 ? 's' : ''} to the pool`, 'success');
+    },
+    [notify]
+  );
+
   const removeAsset = useCallback(
     (id: string) => {
       const asset = pool.find((a) => a.id === id);
@@ -703,6 +720,7 @@ export function useAdvertEngine({ cols, panelCount, notify, initialAssets }: Adv
     setAutoSort,
     addFiles,
     addUrl,
+    addLibraryAssets,
     removeAsset,
     applySortedOrder,
     resetPool,

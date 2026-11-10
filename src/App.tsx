@@ -7,6 +7,8 @@ import { Icon } from "./components/Icon";
 import { PreviewDock } from "./components/PreviewDock";
 import { SheetView } from "./components/SheetView";
 import { SliceView } from "./components/SliceView";
+import { AssetProvider } from "./components/assetProvider/AssetProvider";
+import type { LibraryAsset } from "./services/assetLibrary";
 import { StudioDialog } from "./components/StudioDialog";
 import { Btn, IconBtn } from "./components/ui";
 import {
@@ -57,7 +59,7 @@ interface StudioSession {
   imageSrc: string;
 }
 
-type Tab = "board" | "sheet" | "handoff" | "slice";
+type Tab = "board" | "sheet" | "handoff" | "slice" | "library";
 type Tone = "info" | "success" | "warn" | "danger";
 interface Toast {
   id: string;
@@ -607,6 +609,39 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
     void load();
   }, [doc.frames]);
 
+  // Asset provider library → ReelDeck board.
+  const handleLibraryToDeck = useCallback((assets: LibraryAsset[]) => {
+    if (!assets.length) return;
+    const load = async () => {
+      const mapped: Frame[] = [];
+      for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+        const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+          if (asset.w && asset.h) { resolve({ w: asset.w, h: asset.h }); return; }
+          const img = new Image(); img.onload = () => resolve({ w: img.naturalWidth || 1280, h: img.naturalHeight || 720 }); img.onerror = () => resolve({ w: 1280, h: 720 }); img.src = asset.src;
+        });
+        mapped.push({
+          id: uid(),
+          name: asset.name,
+          caption: "",
+          src: asset.src,
+          w: dims.w,
+          h: dims.h,
+          shot: "WS",
+          status: "draft",
+          duration: 4,
+          tags: [...asset.tags],
+          comments: [],
+          annotated: false,
+          createdAt: Date.now() + i,
+        });
+      }
+      dispatch({ type: "ADD_FRAMES", frames: mapped });
+      toast(`${mapped.length} library asset${mapped.length === 1 ? "" : "s"} added to the board`, "success", { label: "Undo", run: () => dispatch({ type: "UNDO" }) });
+    };
+    void load();
+  }, [dispatch, toast]);
+
   // AniPlayer integration – synced live with ReelDeck deck and Zoom outputs
   const aniFrames = useMemo(() => doc.frames.map(f => ({ url: f.src, name: f.name, caption: f.caption })), [doc.frames]);
   const openAniPlayer = useCallback((id?: string | number) => {
@@ -696,6 +731,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
       if (e.key === "1") setTab("board");
       if (e.key === "2") setTab("sheet");
       if (e.key === "3") setTab("handoff");
+      if (e.key === "4") setTab("library");
       if (e.key.toLowerCase() === "e" && focusId) setEditorId(focusId);
       if ((e.key === "Delete" || e.key === "Backspace") && selected.length) {
         e.preventDefault();
@@ -733,6 +769,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
     { key: "board", label: "Board", icon: "grid", badge: String(doc.frames.length) },
     { key: "sheet", label: "Contact sheet", icon: "sheet" },
     { key: "slice", label: "Slice studio", icon: "scissors" },
+    { key: "library", label: "Library", icon: "folder" },
     { key: "handoff", label: "LLM handoff", icon: "spark", badge: String(handoff.selected.length) },
   ];
 
@@ -1074,6 +1111,9 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             toast(`${frames.length} sliced frame${frames.length === 1 ? "" : "s"} added to the deck`, "success", { label: "Undo", run: () => dispatch({ type: "UNDO" }) });
           }} />
         </div>
+        {tab === "library" && (
+          <AssetProvider onAddToDeck={handleLibraryToDeck} />
+        )}
       </main>
 
       {/* ---------------- always-on preview ---------------- */}
@@ -1095,7 +1135,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
       {/* ---------------- status bar ---------------- */}
       <footer className="relative z-20 flex shrink-0 items-center gap-3 border-t border-line bg-ink-950/90 px-3 py-1 font-mono text-[9.5px] text-dim">
         <span className="hidden sm:inline">
-          <span className="text-mute">1/2/3</span> views · <span className="text-mute">/</span> search ·{" "}
+          <span className="text-mute">1/2/3/4</span> views · <span className="text-mute">/</span> search ·{" "}
           <span className="text-mute">E</span> annotate · <span className="text-mute">⌘Z</span> undo ·{" "}
           <span className="text-mute">⌘V</span> paste images
         </span>

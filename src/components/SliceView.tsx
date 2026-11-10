@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Frame } from "../types";
 import { loadImage, uid } from "../lib/imaging";
+import { addLibraryAssets } from "../services/assetLibrary";
 import { Icon } from "./Icon";
 import { Btn } from "./ui";
 
@@ -77,6 +78,7 @@ export function SliceView({ frames, requestedFrame, onAdd }: { frames: Frame[]; 
   const [xCuts, setXCuts] = useState<Record<number, number>>({});
   const [yCuts, setYCuts] = useState<Record<number, number>>({});
   const [editingBlock, setEditingBlock] = useState(0);
+  const [notice, setNotice] = useState("");
   const [draftCell, setDraftCell] = useState<Cell | null>(null);
   const [corner, setCorner] = useState<Corner>("top-left");
   const [mergeTarget, setMergeTarget] = useState<number | null>(null);
@@ -237,11 +239,12 @@ export function SliceView({ frames, requestedFrame, onAdd }: { frames: Frame[]; 
     return axis === "x" ? (e.clientX - rect.left) / rect.width * source.w : (e.clientY - rect.top) / rect.height * source.h;
   };
 
-  const add = async (mode: "selected" | "all" = "all") => {
+  const add = async (mode: "selected" | "all" = "all", sink: "deck" | "library" = "deck") => {
     if (!source || !cells || working || hasPendingChange || (mode === "all" && !selectedCount)) return;
     const token = ++loadToken.current;
     setWorking(true);
     setError("");
+    setNotice("");
     try {
       const image = await loadImage(source.src);
       const chosen = cells.filter((cell) => mode === "selected" ? cell.index === editingBlock : !excluded.has(cell.index));
@@ -255,17 +258,29 @@ export function SliceView({ frames, requestedFrame, onAdd }: { frames: Frame[]; 
         context.drawImage(image, cell.x, cell.y, cell.w, cell.h, 0, 0, cell.w, cell.h);
         return { id: uid(), name: `${source.name} · ${String(cell.index + 1).padStart(2, "0")}`, caption: "", src: canvas.toDataURL("image/png"), w: cell.w, h: cell.h, shot: "WS", status: "draft", duration: 4, tags: [], comments: [], annotated: false, createdAt: Date.now() + i };
       });
-      if (token === loadToken.current) onAdd(created);
+      if (token !== loadToken.current) return;
+      if (sink === "library") {
+        await addLibraryAssets(created.map((frame) => ({ name: frame.name, origin: "slice", src: frame.src, w: frame.w, h: frame.h, tags: ["slice"] })));
+        if (token === loadToken.current) setNotice(`Saved ${created.length} block${created.length === 1 ? "" : "s"} to the library`);
+      } else {
+        onAdd(created);
+      }
     } catch {
-      if (token === loadToken.current) setError("Could not slice this image. Please try a different source.");
+      if (token === loadToken.current) setError(sink === "library" ? "Could not save these blocks to the library." : "Could not slice this image. Please try a different source.");
     } finally {
       if (token === loadToken.current) setWorking(false);
     }
   };
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 2500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto sm:flex-row sm:overflow-hidden">
     <section className="flex min-h-[360px] min-w-0 flex-1 flex-col sm:min-h-0">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-ink-900/70 px-4 py-3"><div className="min-w-0 flex-1"><div className="tk text-dim">CUTTING MAT / LIVE PREVIEW</div><div className="truncate text-[13px] font-semibold text-bone">{source ? source.name : "Choose an image to begin"}</div></div>{source && <span className="font-mono text-[10px] text-mute">{source.w} × {source.h} PX</span>}<Btn icon="check" variant="solid" disabled={!source || !cells || !selectedCount || working || hasPendingChange} onClick={() => void add()}>{working ? "Working…" : `Add ${selectedCount} block${selectedCount === 1 ? "" : "s"} to deck`}</Btn></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-ink-900/70 px-4 py-3"><div className="min-w-0 flex-1"><div className="tk text-dim">CUTTING MAT / LIVE PREVIEW</div><div className="truncate text-[13px] font-semibold text-bone">{source ? source.name : "Choose an image to begin"}</div></div>{source && <span className="font-mono text-[10px] text-mute">{source.w} × {source.h} PX</span>}{notice && <span role="status" className="text-[10px] text-amber">{notice}</span>}<Btn icon="folder" disabled={!source || !cells || !selectedCount || working || hasPendingChange} onClick={() => void add("all", "library")}>{`Save ${selectedCount} block${selectedCount === 1 ? "" : "s"} to library`}</Btn><Btn icon="check" variant="solid" disabled={!source || !cells || !selectedCount || working || hasPendingChange} onClick={() => void add()}>{working ? "Working…" : `Add ${selectedCount} block${selectedCount === 1 ? "" : "s"} to deck`}</Btn></div>
       {error && <div role="alert" className="border-b border-danger/40 bg-danger/10 px-4 py-2 text-[12px] text-danger">{error}</div>}
       {source && !cells && <div role="alert" className="border-b border-warn/40 bg-warn/10 px-4 py-2 text-[12px] text-warn">Invalid grid: use 1–12 rows and columns and non-negative margins and gutters that leave at least one pixel per block.</div>}
       <div className="checker flex min-h-[260px] flex-1 items-start justify-center overflow-auto p-3 sm:min-h-0">

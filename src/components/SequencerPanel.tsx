@@ -29,6 +29,8 @@ import { cn } from "../utils/cn";
 import { uiText } from "../hooks/useUIConfig";
 import { CustomizableLabel } from "./CustomizableLabel";
 import { CustomizableButton } from "./CustomizableButton";
+import { AssetPicker } from "./assetProvider/AssetProvider";
+import type { LibraryAsset } from "../services/assetLibrary";
 import { SequencerPresetStudio } from "./SequencerPresetStudio";
 import { WarpPresetsPopup } from "./WarpPresetsPopup";
 import {
@@ -217,6 +219,7 @@ export const SequencerPanel: React.FC<SequencerPanelProps> = ({
     [effectiveGridRegions, columns],
   );
   const [sources, setSources] = useState<SequencerSource[]>(() => incomingSources);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [selectedSourceId, setSelectedSourceId] = useState<string>(
     () => incomingSources[0]?.id || "",
   );
@@ -395,6 +398,22 @@ export const SequencerPanel: React.FC<SequencerPanelProps> = ({
     };
     reader.readAsDataURL(file);
     event.target.value = "";
+  };
+
+  const handleLibrarySend = (assets: LibraryAsset[]) => {
+    if (!assets.length) return;
+    const stamp = Date.now();
+    const added: SequencerSource[] = assets.map((asset, index) => ({
+      id: `seq_library_${stamp}_${index}`,
+      name: asset.name,
+      url: asset.src,
+      timestamp: new Date().toISOString(),
+    }));
+    setSources((previous) => [...added, ...previous]);
+    setSelectedSourceId(added[0].id);
+    added.forEach(onAddSource);
+    showToast(`✓ Added ${added.length} library image${added.length === 1 ? "" : "s"} to Saved sources`);
+    setLibraryOpen(false);
   };
 
   const handleDeleteSelectedSource = () => {
@@ -791,6 +810,7 @@ className={cn(
           </div>
 
           <div className="mt-1 flex h-6 shrink-0 items-center justify-between gap-1 px-0.5">
+            <div className="flex items-center gap-1">
             <CustomizableButton
               buttonId="sequencer_panel_btn_11"
               defaultIcon={<ImagePlus className="h-2.5 w-2.5" />}
@@ -804,6 +824,21 @@ className="flex h-[18px] items-center gap-1 rounded-md border border-emerald-400
                     </>
                   )}
             </CustomizableButton>
+            <CustomizableButton
+              buttonId="sequencer_panel_btn_12"
+              defaultIcon={<Images className="h-2.5 w-2.5" />}
+              type="button"
+onClick={() => setLibraryOpen(true)}
+title="Add saved sources from the asset library"
+className="flex h-[18px] items-center gap-1 rounded-md border border-emerald-400/60 bg-emerald-950/40 px-2 text-[8.5px] font-bold text-emerald-300 hover:bg-emerald-900/60 cursor-pointer transition-colors"
+            >
+                {() => (
+                    <>
+                      <span>+ Library</span>
+                    </>
+                  )}
+            </CustomizableButton>
+            </div>
             <CustomizableButton
               buttonId="sequencer_panel_btn_10"
               defaultIcon={<Trash2 className="h-2.5 w-2.5" />}
@@ -963,6 +998,12 @@ className="h-[24px] px-2 rounded-lg text-[9px] font-mono font-bold flex items-ce
           </CustomizableButton>
         </div>
       </section>
+      <AssetPicker
+        open={libraryOpen}
+        title="Add sources from library"
+        onClose={() => setLibraryOpen(false)}
+        onSend={handleLibrarySend}
+      />
     </div>
   );
 };
