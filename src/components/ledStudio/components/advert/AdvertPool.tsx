@@ -4,6 +4,7 @@ import {
   ArrowDownAZ,
   ArrowDownZA,
   ArrowDownUp,
+  FolderOpen,
   Layers,
   Loader2,
   Palette,
@@ -20,6 +21,8 @@ import type { AdvertTab, GroupMode, SortMode } from '../../types';
 import type { AdvertEngine } from '../../engine/useAdvertEngine';
 import { sortAssets } from '../../utils/sorter';
 import { cn } from '../../utils/cn';
+import { AssetPicker } from '../../../assetProvider/AssetProvider';
+import type { LibraryAsset } from '../../../../services/assetLibrary';
 
 const SORTS: Array<{ id: SortMode; icon: React.ElementType; label: string }> = [
   { id: 'name-asc', icon: ArrowDownAZ, label: 'Name A→Z' },
@@ -46,6 +49,7 @@ export function AdvertPool({
   onClose: () => void;
 }) {
   const [urlDraft, setUrlDraft] = useState('');
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const pending = engine.pool.filter((a) => !engine.metas[a.url]).length;
 
   const visible = useMemo(() => {
@@ -62,6 +66,11 @@ export function AdvertPool({
     }
     return list;
   }, [engine.pool, engine.metas, engine.sortMode, engine.autoSort, engine.groupFilter, engine.groupMode, engine.groups]);
+
+  const handleLibrarySend = (assets: LibraryAsset[]) => {
+    engine.addLibraryAssets(assets.map((asset) => ({ name: asset.name, url: asset.src })));
+    setLibraryOpen(false);
+  };
 
   return (
     <aside className="h-full w-[300px] shrink-0 glass border-l border-[#2c332a] flex flex-col min-h-0">
@@ -138,6 +147,21 @@ export function AdvertPool({
             <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setLibraryOpen(true)}
+          className="flex w-full items-center gap-2 rounded-md border border-dashed border-[#4b5a43] hover:border-led-lime bg-[#161d14] px-2.5 py-2 mt-1.5 cursor-pointer transition-colors"
+        >
+          <span className="w-6 h-6 rounded grid place-items-center border border-[#465640] text-led-lime text-[13px] shrink-0">
+            <FolderOpen className="w-3.5 h-3.5" />
+          </span>
+          <span className="leading-tight">
+            <span className="block text-[10.5px] font-bold text-[#e8efe0]">Add from library</span>
+            <span className="block text-[8.5px] text-[#7f8a7c]">Asset provider holding area</span>
+          </span>
+          <FolderOpen className="w-3.5 h-3.5 text-[#7f8a7c] ml-auto" />
+        </button>
       </div>
 
       {/* sort + group */}
@@ -308,6 +332,12 @@ export function AdvertPool({
           Open spread studio
         </button>
       </div>
+      <AssetPicker
+        open={libraryOpen}
+        title="Add from library to the choreographer"
+        onClose={() => setLibraryOpen(false)}
+        onSend={handleLibrarySend}
+      />
     </aside>
   );
 }

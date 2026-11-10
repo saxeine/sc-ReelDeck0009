@@ -15,6 +15,10 @@ For a production build, run `npm run build`. Vite produces a self-contained `dis
 
 Right-click any application element to open the movable **IBC** editor. Its **Styles**, **Icons**, and **Toggles** tabs let you adjust that element's text or accessible label, colors, type size, shape, icon visibility and size, text/icon presentation, and enabled state. Under the **Icons** tab, the folded **ICON SET** panel expands into a button grid: click any icon to apply it to the selected element (the minus button removes it), then fine-tune its size and colour. Edits apply immediately and persist locally. **Save Def** stores a reusable style preset, **Restore** applies that preset to the current element, and **Reset** returns the current element to its original state. Press Escape or use the close button to dismiss IBC; drag its header to move it.
 
+## Asset provider library
+
+The **Library** tab (shortcut `4`) is the editable asset holding area backed by a browser database (IndexedDB), so its contents survive reloads. Images can be added directly, saved from the **Slice studio** ("Save blocks to library"), or sent from **Zoom Studio** ("To library"); each asset can be renamed, tagged, favourited, and deleted. The library feeds both the **sequencer** ("+ Library" in the AdShop Sequencer's saved sources) and the **choreographer** ("Add from library" in the LED Studio's advert pool), which in turn drive the front page display and hand content back to ReelDeck; library selections can also be added to the ReelDeck board directly with "Add to board".
+
 ## The AdShop display
 
 - The preview is a fixed 4 × 4 grid. Use the header **Settings** gear to open **Your image**, **Display controls** (including **Make it yours**), or **Live Control Deck** in their own dialogs. Close a dialog with its close button or Escape; changes remain in the current session.
