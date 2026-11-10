@@ -3,9 +3,10 @@ import { Icon } from "./Icon";
 import { Btn } from "./ui";
 
 /**
- * Always-on live preview of the rendered contact sheet. It stays expanded in
- * the workspace; the Sheet tab keeps a compact dock because its canvas is
- * already shown full-size.
+ * Live preview of the rendered contact sheet, docked at the bottom of the
+ * workspace. It is hidden by default so the board keeps its space; the thin
+ * strip keeps a Show handle. On the Sheet tab it stays slim because the canvas
+ * is already shown full-size.
  */
 export function PreviewDock({
   preview,
@@ -16,6 +17,8 @@ export function PreviewDock({
   rendering,
   renderMs,
   locked,
+  hidden,
+  onToggle,
   onOpenSheet,
   onExport,
   onCopy,
@@ -31,6 +34,9 @@ export function PreviewDock({
   renderMs: number;
   /** the sheet tab already shows the big preview — the dock stays slim there */
   locked: boolean;
+  /** hidden by default so the dock never obscures the board */
+  hidden: boolean;
+  onToggle: () => void;
   onOpenSheet: () => void;
   onExport: () => void;
   onCopy: () => void;
@@ -38,6 +44,31 @@ export function PreviewDock({
   onClose?: () => void;
 }) {
   const slim = locked;
+
+  if (hidden) {
+    return (
+      <section
+        aria-label="Live contact sheet preview"
+        className="relative z-20 flex h-[30px] shrink-0 items-center gap-2 border-t border-line bg-ink-900/92 px-3 backdrop-blur"
+      >
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-danger rec" />
+          <span className="tk text-bone">Live preview</span>
+        </span>
+        <span className="font-mono text-[9px] text-dim">HIDDEN</span>
+        {rendering && (
+          <span className="rounded border border-amber/40 bg-amber/10 px-1.5 py-[1px] font-mono text-[9px] text-amber">
+            RENDERING…
+          </span>
+        )}
+        <div className="ml-auto">
+          <Btn size="xs" icon="eye" onClick={onToggle} title="Show the live preview dock">
+            Show
+          </Btn>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -135,6 +166,9 @@ export function PreviewDock({
               </Btn>
             </>
           )}
+          <Btn size="xs" icon="eyeOff" onClick={onToggle} title="Hide the live preview dock">
+            Hide
+          </Btn>
           {!slim && (
             <span className="ml-auto font-mono text-[9px] text-dim">
               {frames} FRAME{frames === 1 ? "" : "S"} IN SCOPE

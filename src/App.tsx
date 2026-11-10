@@ -76,6 +76,8 @@ interface Prefs {
   views?: SavedView[];
   density?: number;
   theme?: ThemeKey;
+  previewOpen?: boolean;
+  slotText?: boolean;
 }
 
 function loadPrefs(): Prefs {
@@ -129,6 +131,8 @@ export default function App() {
   const [aniOpen, setAniOpen] = useState(false);
   const [aniIndex, setAniIndex] = useState<number | null>(null);
   const [density, setDensity] = useState(prefs.current.density ?? 268);
+  // Board slot text (number, badges, labels); the slot cycle button toggles it.
+  const [slotText, setSlotText] = useState(prefs.current.slotText ?? true);
   const [handoff, setHandoff] = useState<HandoffOptions>({
     ...DEFAULT_HANDOFF,
     ...prefs.current.handoff,
@@ -140,7 +144,8 @@ export default function App() {
   const [rendering, setRendering] = useState(true);
   const [renderMs, setRenderMs] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
-  const [previewDockOpen, setPreviewDockOpen] = useState(false);
+  // The live preview dock is hidden by default so it never obscures the board.
+  const [previewOpen, setPreviewOpen] = useState(prefs.current.previewOpen ?? false);
   const [theme, setThemeState] = useState<ThemeKey>(() =>
     loadTheme()
   );
@@ -271,6 +276,8 @@ export default function App() {
             views: views.filter((v) => !v.builtin),
             density,
             theme,
+            previewOpen,
+            slotText,
           })
         );
       } catch {
@@ -278,7 +285,7 @@ export default function App() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [doc.sheet, handoff, views, density, theme]);
+  }, [doc.sheet, handoff, views, density, theme, previewOpen, slotText]);
 
   /* ------------------------------ operations ------------------------------ */
   const importFiles = useCallback(
@@ -768,10 +775,10 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
 
   const tabs: { key: Tab; label: string; icon: string; badge?: string }[] = [
     { key: "board", label: "Board", icon: "grid", badge: String(doc.frames.length) },
-    { key: "sheet", label: "Contact sheet", icon: "sheet" },
-    { key: "slice", label: "Slice studio", icon: "scissors" },
-    { key: "library", label: "Library", icon: "folder" },
-    { key: "handoff", label: "LLM handoff", icon: "spark", badge: String(handoff.selected.length) },
+    { key: "sheet", label: "Contact", icon: "sheet" },
+    { key: "slice", label: "Slicer", icon: "scissors" },
+    { key: "library", label: "Lib", icon: "folder" },
+    { key: "handoff", label: "LLM", icon: "spark", badge: String(handoff.selected.length) },
   ];
 
   const openWorkspace = (next: Tab) => {
@@ -1027,6 +1034,8 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             setFocusId={setFocusId}
             density={density}
             setDensity={setDensity}
+            slotText={slotText}
+            setSlotText={setSlotText}
             api={api}
             onOpenEditor={(id) => {
               setFocusId(id);
@@ -1117,24 +1126,23 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         )}
       </main>
 
-      {/* ---------------- preview dock (hidden by default) ---------------- */}
-      {previewDockOpen && (
-        <PreviewDock
-          preview={preview}
-          width={info?.width ?? 0}
-          height={info?.height ?? 0}
-          frames={scopeFrames.length}
-          themeLabel={THEMES[doc.sheet.theme].label}
-          rendering={rendering}
-          renderMs={renderMs}
-          locked={tab === "sheet"}
-          onOpenSheet={() => setTab("sheet")}
-          onExport={() => exportSheet("png")}
-          onCopy={copySheet}
-          onHandoff={() => setTab("handoff")}
-          onClose={() => setPreviewDockOpen(false)}
-        />
-      )}
+      {/* ---------------- live preview dock (hidden by default) ---------------- */}
+      <PreviewDock
+        hidden={!previewOpen}
+        onToggle={() => setPreviewOpen((v) => !v)}
+        preview={preview}
+        width={info?.width ?? 0}
+        height={info?.height ?? 0}
+        frames={scopeFrames.length}
+        themeLabel={THEMES[doc.sheet.theme].label}
+        rendering={rendering}
+        renderMs={renderMs}
+        locked={tab === "sheet"}
+        onOpenSheet={() => setTab("sheet")}
+        onExport={() => exportSheet("png")}
+        onCopy={copySheet}
+        onHandoff={() => setTab("handoff")}
+      />
 
       {/* ---------------- status bar ---------------- */}
       <footer className="relative z-20 flex shrink-0 items-center gap-3 border-t border-line bg-ink-950/90 px-3 py-1 font-mono text-[9.5px] text-dim">
@@ -1148,18 +1156,18 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
           <span>HISTORY {hist.past.length}</span>
           <button
             type="button"
-            onClick={() => setPreviewDockOpen((v) => !v)}
+            onClick={() => setPreviewOpen((v) => !v)}
             className={cn(
               "flex h-5 w-5 items-center justify-center rounded border transition-all focus-ring",
-              previewDockOpen
+              previewOpen
                 ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_8px_rgba(255,171,31,0.2)]"
                 : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
             )}
-            title={previewDockOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
-            aria-label={previewDockOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
-            aria-expanded={previewDockOpen}
+            title={previewOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
+            aria-label={previewOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
+            aria-expanded={previewOpen}
           >
-            <Icon name={previewDockOpen ? "eye" : "eyeOff"} size={11} />
+            <Icon name={previewOpen ? "eye" : "eyeOff"} size={11} />
           </button>
           <span className={cn(scopeFrames.length ? "text-lime" : "text-warn")}>
             SHEET {scopeFrames.length} FR

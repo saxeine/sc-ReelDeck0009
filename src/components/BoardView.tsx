@@ -16,6 +16,26 @@ import { Icon } from "./Icon";
 import { Inspector } from "./Inspector";
 import { Btn, Chip, Empty, IconBtn, SectionTitle, Select, Slider } from "./ui";
 
+/** Board slot states reached by the single cycle button (default + 2 smaller
+ * sizes, plus image-only and thumbnail states that hide the card text). */
+const SLOT_STATES = [
+  { key: "default", label: "Default", px: 268, labels: true },
+  { key: "small", label: "Small", px: 200, labels: true },
+  { key: "mini", label: "Mini", px: 150, labels: true },
+  { key: "image", label: "Image only", px: 150, labels: false },
+  { key: "thumb", label: "Thumbnail", px: 110, labels: false },
+] as const;
+
+function slotStateIndex(density: number, labels: boolean) {
+  let best = SLOT_STATES.findIndex((state) => state.labels === labels);
+  if (best < 0) best = 0;
+  for (let i = 0; i < SLOT_STATES.length; i++) {
+    if (SLOT_STATES[i].labels !== labels) continue;
+    if (Math.abs(SLOT_STATES[i].px - density) < Math.abs(SLOT_STATES[best].px - density)) best = i;
+  }
+  return best;
+}
+
 export interface BoardApi {
   update: (id: string, patch: Partial<Frame>, merge?: string) => void;
   remove: (ids: string[]) => void;
@@ -45,6 +65,9 @@ interface Props {
   setFocusId: (id: string | null) => void;
   density: number;
   setDensity: (n: number) => void;
+  /** when false the slots show the image only (no number, badges, or labels) */
+  slotText: boolean;
+  setSlotText: (v: boolean) => void;
   api: BoardApi;
   onOpenEditor: (id: string) => void;
   onOpenStudio: (kind: "neo1" | "bubble", id: string) => void;
@@ -81,6 +104,10 @@ export function BoardView(p: Props) {
     return c;
   }, [doc.frames]);
   const runtime = doc.frames.reduce((a, f) => a + f.duration, 0);
+  const sizeIndex = slotStateIndex(p.density, p.slotText);
+  const sizeMode = SLOT_STATES[sizeIndex];
+  const nextSize = SLOT_STATES[(sizeIndex + 1) % SLOT_STATES.length];
+  const tinySlots = p.density <= 120;
 
   const toggleSel = (id: string, additive: boolean) => {
     if (additive) {
@@ -312,7 +339,7 @@ export function BoardView(p: Props) {
           <Slider
             label="Card width"
             value={p.density}
-            min={190}
+            min={100}
             max={460}
             step={10}
             unit="px"
@@ -412,29 +439,27 @@ export function BoardView(p: Props) {
             size="xs"
             icon="send"
             variant="cool"
+            className="w-7 px-0"
             disabled={!doc.frames.length}
             onClick={p.onSendToAdShop}
             title={adShopActionLabel}
             aria-label={adShopActionLabel}
-          >
-            {selected.length ? `Send ${selected.length} selected to AdShop` : "2AdShop"}
-          </Btn>
+          />
 
-          <Btn size="xs" icon="text" disabled={!studioFrameId}
-            title={studioFrameId ? "Open the selected frame in Neo1 Studio" : "Select or focus one frame first"}
-            onClick={() => studioFrameId && p.onOpenStudio("neo1", studioFrameId)}>
-            Neo1 Studio
-          </Btn>
-          <Btn size="xs" icon="comment" disabled={!studioFrameId}
-            title={studioFrameId ? "Open the selected frame in Bubble Studio" : "Select or focus one frame first"}
-            onClick={() => studioFrameId && p.onOpenStudio("bubble", studioFrameId)}>
-            Bubble Studio
-          </Btn>
+          <Btn size="xs" icon="text" className="w-7 px-0" disabled={!studioFrameId}
+            title={studioFrameId ? "Open the selected frame in Neo1" : "Select or focus one frame first"}
+            aria-label="Open in Neo1"
+            onClick={() => studioFrameId && p.onOpenStudio("neo1", studioFrameId)} />
+          <Btn size="xs" icon="comment" className="w-7 px-0" disabled={!studioFrameId}
+            title={studioFrameId ? "Open the selected frame in Bubble" : "Select or focus one frame first"}
+            aria-label="Open in Bubble"
+            onClick={() => studioFrameId && p.onOpenStudio("bubble", studioFrameId)} />
           <Btn size="xs" icon="expand" disabled={!studioFrameId}
             variant="cool"
-            title={studioFrameId ? "Open Zoom Studio for the selected frame" : "Select or focus one frame first"}
+            title={studioFrameId ? "Open Zoom for the selected frame" : "Select or focus one frame first"}
+            aria-label="Open Zoom"
             onClick={() => studioFrameId ? p.onOpenZoomStudio(studioFrameId) : p.onOpenZoomStudio()}>
-            Zoom Studio
+            Zoom
           </Btn>
           <Btn size="xs" icon="film" variant="cool"
             disabled={!doc.frames.length}
@@ -442,6 +467,17 @@ export function BoardView(p: Props) {
             onClick={() => p.onOpenAniPlayer()}>
             AniPlayer
           </Btn>
+
+          <button
+            type="button"
+            data-testid="slot-size-cycle"
+            onClick={() => { p.setDensity(nextSize.px); p.setSlotText(nextSize.labels); }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] border border-ink-600 text-mute transition-colors hover:border-line hover:text-bone focus-ring"
+            title={`Board slots: ${sizeMode.label} — click to cycle to ${nextSize.label.toLowerCase()}`}
+            aria-label={`Board slot size ${sizeMode.label}. Click to cycle to ${nextSize.label.toLowerCase()}`}
+          >
+            <Icon name="expand" size={14} />
+          </button>
 
           {selected.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5 pop">
@@ -462,11 +498,7 @@ export function BoardView(p: Props) {
                 Clear
               </Btn>
             </div>
-          ) : (
-            <span className="hidden font-mono text-[10px] text-dim sm:inline">
-              {canReorder ? "DRAG CARDS TO RESEQUENCE · DOUBLE-CLICK TO ANNOTATE" : "SORTED VIEW · REORDER DISABLED"}
-            </span>
-          )}
+          ) : null}
 
           <div className="ml-auto flex items-center gap-2 font-mono text-[10px] text-dim">
             <span>
@@ -581,9 +613,11 @@ export function BoardView(p: Props) {
                       />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/85 via-transparent to-ink-950/35" />
 
-                      <span className="absolute bottom-1.5 left-2 display text-[34px] leading-none text-bone/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
-                        {String(realIndex + 1).padStart(2, "0")}
-                      </span>
+                      {p.slotText && (
+                        <span className="absolute bottom-1.5 left-2 display text-[34px] leading-none text-bone/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                          {String(realIndex + 1).padStart(2, "0")}
+                        </span>
+                      )}
 
                       <button
                         onClick={(e) => {
@@ -607,7 +641,7 @@ export function BoardView(p: Props) {
                             <IconBtn
                               icon="left"
                               label="Move earlier"
-                              size={26}
+                              size={tinySlots ? 18 : 26}
                               className="bg-ink-950/75"
                               disabled={realIndex === 0}
                               onClick={(e) => {
@@ -618,7 +652,7 @@ export function BoardView(p: Props) {
                             <IconBtn
                               icon="right"
                               label="Move later"
-                              size={26}
+                              size={tinySlots ? 18 : 26}
                               className="bg-ink-950/75"
                               disabled={realIndex === doc.frames.length - 1}
                               onClick={(e) => {
@@ -631,7 +665,7 @@ export function BoardView(p: Props) {
                         <IconBtn
                           icon="expand"
                           label="Enlarge & annotate"
-                          size={26}
+                          size={tinySlots ? 18 : 26}
                           tone="cool"
                           className="bg-ink-950/75"
                           onClick={(e) => {
@@ -642,14 +676,14 @@ export function BoardView(p: Props) {
                         <IconBtn
                           icon="scissors"
                           label="Slice this image"
-                          size={26}
+                          size={tinySlots ? 18 : 26}
                           className="bg-ink-950/75"
                           onClick={(e) => { e.stopPropagation(); p.onSlice(f.id); }}
                         />
                         <IconBtn
                           icon="copy"
                           label="Duplicate"
-                          size={26}
+                          size={tinySlots ? 18 : 26}
                           className="bg-ink-950/75"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -659,7 +693,7 @@ export function BoardView(p: Props) {
                         <IconBtn
                           icon="trash"
                           label="Delete"
-                          size={26}
+                          size={tinySlots ? 18 : 26}
                           tone="danger"
                           className="bg-ink-950/75"
                           onClick={(e) => {
@@ -669,24 +703,27 @@ export function BoardView(p: Props) {
                         />
                       </div>
 
-                      <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
-                        {f.annotated && (
-                          <span className="rounded bg-cyan/90 px-1 py-[1px] font-mono text-[8px] font-bold text-ink-950">
-                            ✎
+                      {p.slotText && (
+                        <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
+                          {f.annotated && (
+                            <span className="rounded bg-cyan/90 px-1 py-[1px] font-mono text-[8px] font-bold text-ink-950">
+                              ✎
+                            </span>
+                          )}
+                          <span className="rounded bg-ink-950/80 px-1.5 py-[1px] font-mono text-[9px] text-amber">
+                            {shortDur(f.duration)}
                           </span>
-                        )}
-                        <span className="rounded bg-ink-950/80 px-1.5 py-[1px] font-mono text-[9px] text-amber">
-                          {shortDur(f.duration)}
-                        </span>
-                        <span
-                          className="rounded px-1.5 py-[1px] font-mono text-[9px] font-semibold"
-                          style={{ background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}
-                        >
-                          {f.shot}
-                        </span>
-                      </div>
+                          <span
+                            className="rounded px-1.5 py-[1px] font-mono text-[9px] font-semibold"
+                            style={{ background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}
+                          >
+                            {f.shot}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
+                    {p.slotText && (
                     <div className="flex flex-1 flex-col gap-1 p-2 pl-3">
                       <input
                         value={f.name}
@@ -723,6 +760,7 @@ export function BoardView(p: Props) {
                         )}
                       </div>
                     </div>
+                    )}
                   </article>
                 );
               })}
