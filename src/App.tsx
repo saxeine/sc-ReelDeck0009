@@ -76,6 +76,8 @@ interface Prefs {
   views?: SavedView[];
   density?: number;
   theme?: ThemeKey;
+  previewOpen?: boolean;
+  slotText?: boolean;
 }
 
 function loadPrefs(): Prefs {
@@ -129,6 +131,8 @@ export default function App() {
   const [aniOpen, setAniOpen] = useState(false);
   const [aniIndex, setAniIndex] = useState<number | null>(null);
   const [density, setDensity] = useState(prefs.current.density ?? 268);
+  // Board slot text (number, badges, labels); the slot cycle button toggles it.
+  const [slotText, setSlotText] = useState(prefs.current.slotText ?? true);
   const [handoff, setHandoff] = useState<HandoffOptions>({
     ...DEFAULT_HANDOFF,
     ...prefs.current.handoff,
@@ -140,6 +144,8 @@ export default function App() {
   const [rendering, setRendering] = useState(true);
   const [renderMs, setRenderMs] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
+  // The live preview dock is hidden by default so it never obscures the board.
+  const [previewOpen, setPreviewOpen] = useState(prefs.current.previewOpen ?? false);
   const [theme, setThemeState] = useState<ThemeKey>(() =>
     loadTheme()
   );
@@ -270,6 +276,8 @@ export default function App() {
             views: views.filter((v) => !v.builtin),
             density,
             theme,
+            previewOpen,
+            slotText,
           })
         );
       } catch {
@@ -277,7 +285,7 @@ export default function App() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [doc.sheet, handoff, views, density, theme]);
+  }, [doc.sheet, handoff, views, density, theme, previewOpen, slotText]);
 
   /* ------------------------------ operations ------------------------------ */
   const importFiles = useCallback(
@@ -767,10 +775,10 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
 
   const tabs: { key: Tab; label: string; icon: string; badge?: string }[] = [
     { key: "board", label: "Board", icon: "grid", badge: String(doc.frames.length) },
-    { key: "sheet", label: "Contact sheet", icon: "sheet" },
-    { key: "slice", label: "Slice studio", icon: "scissors" },
-    { key: "library", label: "Library", icon: "folder" },
-    { key: "handoff", label: "LLM handoff", icon: "spark", badge: String(handoff.selected.length) },
+    { key: "sheet", label: "Contact", icon: "sheet" },
+    { key: "slice", label: "Slicer", icon: "scissors" },
+    { key: "library", label: "Lib", icon: "folder" },
+    { key: "handoff", label: "LLM", icon: "spark", badge: String(handoff.selected.length) },
   ];
 
   const openWorkspace = (next: Tab) => {
@@ -1026,6 +1034,8 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             setFocusId={setFocusId}
             density={density}
             setDensity={setDensity}
+            slotText={slotText}
+            setSlotText={setSlotText}
             api={api}
             onOpenEditor={(id) => {
               setFocusId(id);
@@ -1116,8 +1126,10 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         )}
       </main>
 
-      {/* ---------------- always-on preview ---------------- */}
+      {/* ---------------- live preview dock (hidden by default) ---------------- */}
       <PreviewDock
+        hidden={!previewOpen}
+        onToggle={() => setPreviewOpen((v) => !v)}
         preview={preview}
         width={info?.width ?? 0}
         height={info?.height ?? 0}
