@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 
-/** The source studios' customizable containers use their supplied defaults. */
+/** Default-rendering compatibility container, editable through the app-wide IBC context menu. */
 interface Props extends Omit<HTMLAttributes<HTMLElement>, "children"> {
   ibcId: string;
   as?: "div" | "section";
