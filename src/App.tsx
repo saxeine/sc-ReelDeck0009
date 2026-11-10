@@ -140,6 +140,7 @@ export default function App() {
   const [rendering, setRendering] = useState(true);
   const [renderMs, setRenderMs] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewDockOpen, setPreviewDockOpen] = useState(false);
   const [theme, setThemeState] = useState<ThemeKey>(() =>
     loadTheme()
   );
@@ -1116,21 +1117,24 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         )}
       </main>
 
-      {/* ---------------- always-on preview ---------------- */}
-      <PreviewDock
-        preview={preview}
-        width={info?.width ?? 0}
-        height={info?.height ?? 0}
-        frames={scopeFrames.length}
-        themeLabel={THEMES[doc.sheet.theme].label}
-        rendering={rendering}
-        renderMs={renderMs}
-        locked={tab === "sheet"}
-        onOpenSheet={() => setTab("sheet")}
-        onExport={() => exportSheet("png")}
-        onCopy={copySheet}
-        onHandoff={() => setTab("handoff")}
-      />
+      {/* ---------------- preview dock (hidden by default) ---------------- */}
+      {previewDockOpen && (
+        <PreviewDock
+          preview={preview}
+          width={info?.width ?? 0}
+          height={info?.height ?? 0}
+          frames={scopeFrames.length}
+          themeLabel={THEMES[doc.sheet.theme].label}
+          rendering={rendering}
+          renderMs={renderMs}
+          locked={tab === "sheet"}
+          onOpenSheet={() => setTab("sheet")}
+          onExport={() => exportSheet("png")}
+          onCopy={copySheet}
+          onHandoff={() => setTab("handoff")}
+          onClose={() => setPreviewDockOpen(false)}
+        />
+      )}
 
       {/* ---------------- status bar ---------------- */}
       <footer className="relative z-20 flex shrink-0 items-center gap-3 border-t border-line bg-ink-950/90 px-3 py-1 font-mono text-[9.5px] text-dim">
@@ -1142,6 +1146,21 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         <span className="sm:hidden">DRAG TO RESEQUENCE · TAP ✎ TO ANNOTATE</span>
         <span className="ml-auto flex items-center gap-3">
           <span>HISTORY {hist.past.length}</span>
+          <button
+            type="button"
+            onClick={() => setPreviewDockOpen((v) => !v)}
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded border transition-all focus-ring",
+              previewDockOpen
+                ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_8px_rgba(255,171,31,0.2)]"
+                : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
+            )}
+            title={previewDockOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
+            aria-label={previewDockOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
+            aria-expanded={previewDockOpen}
+          >
+            <Icon name={previewDockOpen ? "eye" : "eyeOff"} size={11} />
+          </button>
           <span className={cn(scopeFrames.length ? "text-lime" : "text-warn")}>
             SHEET {scopeFrames.length} FR
           </span>
