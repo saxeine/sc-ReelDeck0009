@@ -23,6 +23,7 @@ export function PreviewDock({
   onExport,
   onCopy,
   onHandoff,
+  onClose,
 }: {
   preview: string | null;
   width: number;
@@ -40,6 +41,7 @@ export function PreviewDock({
   onExport: () => void;
   onCopy: () => void;
   onHandoff: () => void;
+  onClose?: () => void;
 }) {
   const slim = locked;
 
@@ -126,6 +128,17 @@ export function PreviewDock({
             <span className="hidden truncate font-mono text-[9px] text-dim sm:inline">
               {themeLabel.toUpperCase()} · {width}×{height}PX · {frames} FR
             </span>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded border border-ink-600 bg-ink-850 text-mute transition-colors hover:border-line hover:text-bone focus-ring"
+              title="Hide preview dock"
+              aria-label="Hide preview dock"
+            >
+              <Icon name="eye" size={13} />
+            </button>
           )}
         </div>
 

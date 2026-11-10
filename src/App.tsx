@@ -1154,6 +1154,21 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
         <span className="sm:hidden">DRAG TO RESEQUENCE · TAP ✎ TO ANNOTATE</span>
         <span className="ml-auto flex items-center gap-3">
           <span>HISTORY {hist.past.length}</span>
+          <button
+            type="button"
+            onClick={() => setPreviewOpen((v) => !v)}
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded border transition-all focus-ring",
+              previewOpen
+                ? "border-amber/60 bg-amber/15 text-amber shadow-[0_0_8px_rgba(255,171,31,0.2)]"
+                : "border-ink-600 bg-ink-850 text-mute hover:border-line hover:text-bone"
+            )}
+            title={previewOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
+            aria-label={previewOpen ? "Hide sheet preview dock" : "Show sheet preview dock"}
+            aria-expanded={previewOpen}
+          >
+            <Icon name={previewOpen ? "eye" : "eyeOff"} size={11} />
+          </button>
           <span className={cn(scopeFrames.length ? "text-lime" : "text-warn")}>
             SHEET {scopeFrames.length} FR
           </span>
