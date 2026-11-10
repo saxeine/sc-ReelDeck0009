@@ -2,9 +2,8 @@ import React, { forwardRef } from "react";
 import { cn } from "../utils/cn";
 
 /**
- * Compatibility adapter for the editors' customizable controls. ReelDeck does
- * not include the source app's global UI-customization service, so controls
- * render their supplied defaults instead.
+ * Default-rendering compatibility adapter. The app-wide IBC customiser edits
+ * these rendered controls on demand from their context menu.
  */
 interface CustomizableButtonProps extends Omit<React.HTMLAttributes<HTMLElement>, "children"> {
   buttonId: string;

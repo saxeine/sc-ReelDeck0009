@@ -9,7 +9,11 @@ npm ci
 npm run dev
 ```
 
-For a production build, run `npm run build`. Vite produces a self-contained `dist/index.html`. Run `npm test` for the animation, studio geometry, font-loading, handoff, and PSD regression tests, and `npx tsc --noEmit` for type checking.
+For a production build, run `npm run build`. Vite produces a self-contained `dist/index.html`. Run `npm test` for the animation, studio geometry, font-loading, handoff, PSD regression tests, and IBC customiser tests, and `npx tsc --noEmit` for type checking.
+
+## IBC system customiser
+
+Right-click any application element to open the movable **IBC** editor. Its **Styles**, **Icons**, and **Toggles** tabs let you adjust that element's text or accessible label, colors, type size, shape, icon visibility and size, text/icon presentation, and enabled state. Under the **Icons** tab, the folded **ICON SET** panel expands into a button grid: click any icon to apply it to the selected element (the minus button removes it), then fine-tune its size and colour. Edits apply immediately and persist locally. **Save Def** stores a reusable style preset, **Restore** applies that preset to the current element, and **Reset** returns the current element to its original state. Press Escape or use the close button to dismiss IBC; drag its header to move it.
 
 ## The AdShop display
 

@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import { cn } from "../utils/cn";
 
-/** Default-label adapter for the source editors' UI customization layer. */
+/** Default-label adapter; its rendered text can be edited with the global IBC customiser. */
 interface CustomizableLabelProps extends Omit<React.HTMLAttributes<HTMLElement>, "children"> {
   labelId: string;
   htmlFor?: string;
