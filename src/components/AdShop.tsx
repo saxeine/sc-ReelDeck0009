@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type ReactNode, type RefObject } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type ReactNode, type RefObject } from "react";
 import campaign from "../assets/adshop-campaign.jpg";
 import type { AdShopHandoff, AdShopImage } from "../types";
 import { Icon } from "./Icon";
@@ -187,6 +187,7 @@ export function AdShop({
   stageRef,
   commitButtonRef,
   onCommitAndReturn,
+  onOpenLibrary,
   theme,
   onTheme,
 }: {
@@ -198,6 +199,7 @@ export function AdShop({
   stageRef: RefObject<HTMLElement | null>;
   commitButtonRef: RefObject<HTMLButtonElement | null>;
   onCommitAndReturn: () => void;
+  onOpenLibrary: () => void;
   theme?: ThemeKey;
   onTheme?: (key: ThemeKey) => void;
 }) {
@@ -661,14 +663,24 @@ export function AdShop({
                 <div className="as-settings-menu-heading"><span>SETTINGS</span><small>Customize your display</small></div>
                 {(Object.keys(SETTINGS_SECTIONS) as SettingsSection[]).map((section) => {
                   const item = SETTINGS_SECTIONS[section];
-                  return <button type="button" key={section} className="as-settings-menu-item" onClick={() => {
-                    setSettingsMenuOpen(false);
-                    setSettingsSection(section);
-                  }}>
-                    <span className="as-settings-item-icon"><Icon name={item.icon} size={17} /></span>
-                    <span><strong>{item.title}</strong><small>{item.description}</small></span>
-                    <Icon name="right" size={14} />
-                  </button>;
+                  return <Fragment key={section}>
+                    <button type="button" className="as-settings-menu-item" onClick={() => {
+                      setSettingsMenuOpen(false);
+                      setSettingsSection(section);
+                    }}>
+                      <span className="as-settings-item-icon"><Icon name={item.icon} size={17} /></span>
+                      <span><strong>{item.title}</strong><small>{item.description}</small></span>
+                      <Icon name="right" size={14} />
+                    </button>
+                    {section === "deck" && <button type="button" className="as-settings-menu-item" disabled={previewPending || preparingStudio} onClick={() => {
+                      setSettingsMenuOpen(false);
+                      void openStudio("sequencer");
+                    }}>
+                      <span className="as-settings-item-icon"><Icon name="sliders" size={17} /></span>
+                      <span><strong>Sequencer</strong><small>Route sequencer — paths &amp; timing</small></span>
+                      <Icon name="right" size={14} />
+                    </button>}
+                  </Fragment>;
                 })}
               </div>}
             </div>
@@ -965,6 +977,7 @@ export function AdShop({
         {studio === "sequencer" && preparedStudio && <AdShopSequencer animation={animation} sources={sequenceSources}
           boxImages={preparedStudio.boxImages} onAddSource={addSequenceSource} onDeleteSource={removeSequenceSource}
           onClose={() => closeStudio()} onOpenGrid={() => setGridOpen(true)} gridConfigurator={gridConfigurator}
+          onOpenLibrary={onOpenLibrary}
           onOpenPainter={() => openStudio("painter", true)} onOpenChoreographer={() => openStudio("choreographer", true)} />}
         {(studio === "choreographer" || studio === "painter") && preparedStudio && <LedStudioModal isOpen
           onClose={() => closeStudio(returnToSequencer)} onCloseToFrontPage={() => closeStudio()}

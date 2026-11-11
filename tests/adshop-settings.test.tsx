@@ -35,7 +35,7 @@ function Harness() {
   const commit = useRef<HTMLButtonElement>(null);
   return <AdShop stageRef={stage} commitButtonRef={commit} handoff={handoff} reelDeckCount={images.length}
     onLoadReelDeck={() => setHandoff({ images, returnTo: "adshop" })}
-    onOpenSlice={() => {}} onOpenReelDeck={() => {}} onCommitAndReturn={() => {}} />;
+    onOpenSlice={() => {}} onOpenReelDeck={() => {}} onCommitAndReturn={() => {}} onOpenLibrary={() => {}} />;
 }
 
 let container: HTMLDivElement;
@@ -63,7 +63,7 @@ function flushFrames() {
 }
 function openSettings(section: "image" | "display" | "deck" | "appearance") {
   click(".as-header-settings");
-  const index = { image: 1, display: 2, deck: 3, appearance: 4 }[section];
+  const index = { image: 1, display: 2, deck: 3, appearance: 5 }[section];
   click(`.as-settings-menu-item:nth-of-type(${index})`);
   expect(element<HTMLDialogElement>(".as-settings-dialog").open).toBe(true);
 }
@@ -111,7 +111,7 @@ describe("AdShop settings", () => {
     click(".as-header-settings");
     expect(element(".as-header-settings").getAttribute("aria-expanded")).toBe("true");
     expect([...container.querySelectorAll(".as-settings-menu-item strong")].map((item) => item.textContent))
-      .toEqual(["Your image", "Display controls", "Live Control Deck", "Appearance & theme"]);
+      .toEqual(["Your image", "Display controls", "Live Control Deck", "Sequencer", "Appearance & theme"]);
     act(() => document.body.dispatchEvent(new Event("pointerdown", { bubbles: true })));
     expect(container.querySelector(".as-settings-menu")).toBeNull();
 
@@ -206,6 +206,15 @@ describe("AdShop settings", () => {
     await act(async () => { element<HTMLElement>(".as-tool-card:nth-of-type(2)").click(); });
     expect(container.querySelector(".as-settings-dialog")).toBeNull();
     expect(element('[aria-label="Choreographer"]')).toBeTruthy();
+  });
+
+  it("opens the Route sequencer straight from the gear menu", async () => {
+    click(".as-header-settings");
+    expect(element("button.as-settings-menu-item:nth-of-type(4)").textContent).toContain("Route sequencer");
+    await act(async () => { element<HTMLElement>(".as-settings-menu-item:nth-of-type(4)").click(); });
+    expect(container.querySelector(".as-settings-menu")).toBeNull();
+    expect(container.querySelector(".as-settings-dialog")).toBeNull();
+    expect(element('[aria-label="Sequencer"]')).toBeTruthy();
   });
 
   it("cancels a pending studio launch on dismissal and keeps settings open on preparation errors", async () => {

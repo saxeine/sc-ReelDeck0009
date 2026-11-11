@@ -433,8 +433,19 @@ export function BoardView(p: Props) {
             )}
           >
             <Icon name="check" size={12} />
-            {selected.length ? `${selected.length} selected` : "Select all"}
+            {selected.length ? `${selected.length} selected` : "All"}
           </button>
+          <Btn
+            size="xs"
+            icon="trash"
+            variant="danger"
+            disabled={!doc.frames.length}
+            title={doc.frames.length ? `Clear board — remove all ${doc.frames.length} frames (undoable)` : "The board is already empty"}
+            aria-label="Clear board"
+            onClick={() => api.remove(doc.frames.map((f) => f.id))}
+          >
+            Clear
+          </Btn>
           <Btn
             size="xs"
             icon="send"

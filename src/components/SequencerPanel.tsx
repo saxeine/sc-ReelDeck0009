@@ -226,6 +226,9 @@ export const SequencerPanel: React.FC<SequencerPanelProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<number>(1);
   const [showPresetStudio, setShowPresetStudio] = useState(false);
   const [showMoreWarpsPopup, setShowMoreWarpsPopup] = useState(false);
+  /** Route point being dragged: the slot whose P-badge is the drag source. */
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
 
   useEffect(() => {
     setSources(incomingSources);
@@ -292,6 +295,32 @@ export const SequencerPanel: React.FC<SequencerPanelProps> = ({
         currentStep: 1,
       };
     });
+  };
+
+  /** Drag a route point onto another panel to reposition that visit in the route. */
+  const moveRoutePoint = (from: number, to: number) => {
+    const fromIndex = state.path.indexOf(from);
+    if (from === to || fromIndex < 0) return;
+    const next = [...state.path];
+    const toIndex = next.indexOf(to);
+    next[fromIndex] = to;
+    // A point already sitting on the target panel swaps onto the source panel.
+    if (toIndex >= 0) next[toIndex] = from;
+    const nextActiveSlots = state.activeSlots.includes(to)
+      ? state.activeSlots
+      : [...state.activeSlots, to].sort((a, b) => a - b);
+    if (nextActiveSlots !== state.activeSlots) onActiveSlotsChange?.(nextActiveSlots);
+    setState((previous) => ({
+      ...previous,
+      path: next,
+      customPath: next,
+      customGridSlots: totalSlots,
+      preset: "custom",
+      activeSlots: nextActiveSlots,
+      currentStep: 1,
+      direction: 1,
+    }));
+    showToast(`✓ Route point moved to slot #${to}`);
   };
 
   const handleSourceClick = (source: SequencerSource) => {
@@ -528,6 +557,20 @@ export const SequencerPanel: React.FC<SequencerPanelProps> = ({
                   key={`sequence-matrix-${slot}`}
 type="button"
 onClick={() => handleSlotClick(slot)}
+onDragOver={(e) => {
+                  if (dragFrom == null) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverSlot(slot);
+                }}
+onDrop={(e) => {
+                  if (dragFrom == null) return;
+                  e.preventDefault();
+                  const from = dragFrom;
+                  setDragFrom(null);
+                  setDragOverSlot(null);
+                  if (from !== slot) moveRoutePoint(from, slot);
+                }}
 title={`Region #${slot} — ${active ? "Active" : "Excluded"}${region.rowSpan > 1 || region.colSpan > 1 ? `, merged ${region.colSpan}×${region.rowSpan}` : ""}`}
 style={{ gridColumn: `${region.col + 1} / span ${region.colSpan}`, gridRow: `${region.row + 1} / span ${region.rowSpan}` }}
 className={cn(
@@ -537,6 +580,7 @@ className={cn(
                       : "border-slate-800 bg-[#09101b] opacity-60",
                     isRuntimeSlot && "border-cyan-300 ring-2 ring-cyan-400/50",
                     isSelected && "outline outline-1 outline-amber-400",
+                    dragOverSlot === slot && dragFrom != null && dragFrom !== slot && "ring-2 ring-amber-300/90 border-amber-300",
                   )}
                 >
                     {() => (
@@ -546,12 +590,28 @@ className={cn(
                     <img
                       src={slotImage}
                       alt=""
+                      draggable={false}
                       className="absolute inset-0 h-full w-full object-cover opacity-25 grayscale-[0.3]"
                     />
                   )}
-                        <span className="absolute left-1 top-0.5 text-[7px] font-mono text-slate-400">
-                    {pathIndex >= 0 ? `P${pathIndex + 1}` : ""}
+                        {pathIndex >= 0 && (
+                  <span
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", String(slot));
+                      setDragFrom(slot);
+                    }}
+                    onDragEnd={() => { setDragFrom(null); setDragOverSlot(null); }}
+                    title={`Route point P${pathIndex + 1} — drag it onto another panel to reposition the route`}
+                    className={cn(
+                      "absolute left-1 top-0.5 z-20 cursor-grab rounded-[3px] border border-cyan-400/40 bg-cyan-950/70 px-1 text-[7px] font-mono text-slate-300 transition-colors hover:border-cyan-300 hover:text-cyan-200 active:cursor-grabbing",
+                      dragFrom === slot && "opacity-40",
+                    )}
+                  >
+                    {`P${pathIndex + 1}`}
                   </span>
+                )}
                         <span className="relative z-10 flex h-full flex-col items-center justify-center">
                     <span className="text-base font-black text-white">#{slot}</span>
                     <span

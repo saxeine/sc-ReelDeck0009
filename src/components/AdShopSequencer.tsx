@@ -4,7 +4,7 @@ import { StudioDialog } from "./StudioDialog";
 import type { useAdShopAnimation } from "./useAdShopAnimation";
 
 export function AdShopSequencer({ animation, sources, boxImages, onAddSource, onDeleteSource, onClose,
-  onOpenPainter, onOpenChoreographer, onOpenGrid, gridConfigurator }: {
+  onOpenPainter, onOpenChoreographer, onOpenGrid, onOpenLibrary, gridConfigurator }: {
   animation: ReturnType<typeof useAdShopAnimation>;
   sources: SequencerSource[];
   boxImages: Record<number, string>;
@@ -14,6 +14,8 @@ export function AdShopSequencer({ animation, sources, boxImages, onAddSource, on
   onOpenPainter: () => void;
   onOpenChoreographer: () => void;
   onOpenGrid: () => void;
+  /** jump to the asset library so new images can be inserted there */
+  onOpenLibrary: () => void;
   gridConfigurator?: ReactNode;
 }) {
   const sourceUploadRef = useRef<HTMLInputElement>(null);
@@ -39,17 +41,18 @@ export function AdShopSequencer({ animation, sources, boxImages, onAddSource, on
     });
     setMessage("The active panels are filled with the current sources.");
   };
-  return <StudioDialog title="AdShop Sequencer">
+  return <StudioDialog title="Route Sequencer">
     <div className="as-sequencer-shell">
       <header className="as-sequencer-header">
-        <div><span>ADSHOP / CONTROL DECK</span><h2>Sequencer</h2></div>
+        <div><span>ADSHOP / CONTROL DECK</span><h2>Route sequencer</h2></div>
         <div className="as-sequencer-actions">
           <button type="button" onClick={animation.toggleRoute}>
             {animation.sequence.playing && !animation.sequence.bypassed ? "Pause sequence" : "Play sequence"}
           </button>
           <button type="button" onClick={onOpenGrid}>Panel arrangement</button>
           <button type="button" onClick={onOpenChoreographer}>Choreographer</button>
-          <button type="button" onClick={onClose} aria-label="Close Sequencer">Close</button>
+          <button type="button" onClick={onOpenLibrary} title="Open the library to insert images">Library</button>
+          <button type="button" onClick={onClose} aria-label="Close Route sequencer">Close</button>
         </div>
       </header>
       <p className="as-sequencer-notice" role="status">{message}</p>
