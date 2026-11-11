@@ -832,6 +832,7 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
           onLoadReelDeck={() => handoffToAdShop("all", "adshop")}
           onOpenSlice={() => openWorkspace("slice")}
           onOpenReelDeck={() => openWorkspace("board")}
+          onOpenLibrary={() => openWorkspace("library")}
           onCommitAndReturn={() => {
             openWorkspace("board");
             toast("AdShop display committed for this session", "success");
@@ -854,9 +855,6 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
           <Icon name="left" size={13} /> AdShop
         </button>
         <div className="flex items-center gap-2">
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-[6px] bg-gradient-to-br from-amber via-ember to-magenta text-ink-950 shadow-[0_4px_18px_-4px_rgba(255,106,26,0.9)]">
-            <Icon name="film" size={19} strokeWidth={2} />
-          </span>
           <div className="leading-none">
             <h1 className="display text-[26px] text-bone">
               REEL<span className="text-amber">DECK</span>
@@ -948,9 +946,12 @@ h2{font:400 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.04em;color:#ff
             }}
           />
           <label className="cursor-pointer">
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-[5px] border border-amber/60 bg-gradient-to-b from-amber to-ember px-3 text-[12px] font-semibold text-ink-950 shadow-[0_2px_14px_-2px_rgba(255,140,26,0.6)] transition-all hover:brightness-110 active:scale-95">
+            <span
+              className="inline-flex h-8 w-8 items-center justify-center rounded-[5px] border border-amber/60 bg-gradient-to-b from-amber to-ember text-ink-950 shadow-[0_2px_14px_-2px_rgba(255,140,26,0.6)] transition-all hover:brightness-110 active:scale-95"
+              title={busy === "import" ? "Reading images…" : "Import images"}
+              aria-label={busy === "import" ? "Importing images" : "Import images"}
+            >
               <Icon name="upload" size={14} />
-              <span className="hidden sm:inline">{busy === "import" ? "Reading…" : "Import"}</span>
             </span>
             <input
               type="file"
