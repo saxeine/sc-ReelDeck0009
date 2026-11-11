@@ -149,20 +149,15 @@ describe("AdShop settings", () => {
     expect(document.activeElement).toBe(first);
   });
 
-  it("keeps the header upload available and shows validation errors when settings is closed", () => {
-    const upload = element<HTMLInputElement>('.as-app > input[type="file"]');
-    const clickInput = vi.spyOn(upload, "click");
-    click(".as-header-upload");
-    expect(clickInput).toHaveBeenCalledOnce();
-    Object.defineProperty(upload, "files", { configurable: true, value: [new File(["bad"], "bad.txt", { type: "text/plain" })] });
-    act(() => upload.dispatchEvent(new Event("change", { bubbles: true })));
-    expect(element('[role="alert"]').textContent).toContain("Please choose an image file");
+  it("shows image validation errors and keeps them visible when settings is closed", () => {
     openSettings("image");
-    expect(element(".as-settings-dialog [role=alert]").textContent).toContain("Please choose an image file");
     const dialogInput = element<HTMLInputElement>('.as-settings-dialog input[type="file"]');
     const clickDialogInput = vi.spyOn(dialogInput, "click");
     click(".as-upload-button");
     expect(clickDialogInput).toHaveBeenCalledOnce();
+    Object.defineProperty(dialogInput, "files", { configurable: true, value: [new File(["bad"], "bad.txt", { type: "text/plain" })] });
+    act(() => dialogInput.dispatchEvent(new Event("change", { bubbles: true })));
+    expect(element(".as-settings-dialog [role=alert]").textContent).toContain("Please choose an image file");
     closeSettings();
     expect(element(".as-error-notice").textContent).toContain("Please choose an image file");
   });
@@ -233,9 +228,11 @@ describe("AdShop settings", () => {
     });
     URL.createObjectURL = vi.fn(() => "blob:artwork");
     URL.revokeObjectURL = vi.fn();
-    const upload = element<HTMLInputElement>('.as-app > input[type="file"]');
+    openSettings("image");
+    const upload = element<HTMLInputElement>('.as-settings-dialog input[type="file"]');
     Object.defineProperty(upload, "files", { configurable: true, value: [new File(["art"], "art.png", { type: "image/png" })] });
     act(() => upload.dispatchEvent(new Event("change", { bubbles: true })));
+    closeSettings();
     openSettings("deck");
     await act(async () => { element<HTMLElement>(".as-tool-card:nth-of-type(1)").click(); });
     expect(element(".as-animation-panel").textContent).toContain("Preparing artwork");

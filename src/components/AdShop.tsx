@@ -228,7 +228,6 @@ export function AdShop({
   const [extraSources, setExtraSources] = useState<SequencerSource[]>([]);
   const [removedSources, setRemovedSources] = useState<string[]>([]);
   const studioToken = useRef(0);
-  const inputRef = useRef<HTMLInputElement>(null); // Always mounted for the header shortcut.
   const settingsInputRef = useRef<HTMLInputElement>(null); // Outside controls are inert while a dialog is open.
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
   const objectUrl = useRef<string | null>(null);
@@ -617,13 +616,6 @@ export function AdShop({
     <div className="as-root">
       <div className={`as-app${previewPending ? " has-preview" : ""}`}>
         <header className="as-header">
-          <div className="as-brand" aria-label="AdShop home">
-            <span className="as-brand-icon"><Icon name="bolt" size={21} strokeWidth={2.6} /></span>
-            <span className="as-brand-copy">
-              <span className="as-brand-name">AdShop<span className="as-brand-period">.</span></span>
-            </span>
-          </div>
-
           <nav className="as-workflow" aria-label="Creative workspace">
             <span className="as-workflow-active" aria-current="page">
               <Icon name="grid" size={16} /> <span>AdShop</span>
@@ -635,15 +627,6 @@ export function AdShop({
           </nav>
 
           <div className="as-header-actions">
-            <button
-              type="button"
-              className="as-header-upload"
-              onClick={() => inputRef.current?.click()}
-              aria-label="Upload an image to the display"
-              title="Upload an image"
-            >
-              <Icon name="upload" size={17} />
-            </button>
             <div className="as-settings-wrap" ref={settingsMenuRef} onBlur={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSettingsMenuOpen(false);
             }}>
@@ -686,14 +669,6 @@ export function AdShop({
             </div>
           </div>
         </header>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={handleUploadChange}
-        />
-
         {previewPending && (
           <div className="as-commit-bar" role="region" aria-label="ReelDeck preview actions">
             <div className="as-commit-message" role="status">
