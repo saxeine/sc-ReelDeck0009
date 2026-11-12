@@ -267,9 +267,11 @@ export function AssetProvider({ onAddToDeck }: { onAddToDeck?: (assets: LibraryA
  * Consumer-side picker. The sequencer and the choreographer pull library
  * artwork through this dialog, so the provider feeds them on demand.
  */
-export function AssetPicker({ open, title = "Add from library", onClose, onSend }: {
+export function AssetPicker({ open, title = "Add from library", targetLabel, onClose, onSend }: {
   open: boolean;
   title?: string;
+  /** What the send button adds the picks to (e.g. "pool", "cast"). */
+  targetLabel?: string;
   onClose: () => void;
   onSend: (assets: LibraryAsset[]) => void;
 }) {
@@ -354,9 +356,15 @@ export function AssetPicker({ open, title = "Add from library", onClose, onSend 
               variant="solid"
               icon="plus"
               disabled={!picked.length}
-              onClick={() => onSend(assets.filter((asset) => picked.includes(asset.id)))}
+              onClick={() =>
+                onSend(
+                  picked
+                    .map((id) => assets.find((asset) => asset.id === id))
+                    .filter((asset): asset is LibraryAsset => Boolean(asset)),
+                )
+              }
             >
-              Add {picked.length || ""} to {title.toLowerCase().includes("choreograph") ? "pool" : "sources"}
+              Add {picked.length || ""} to {targetLabel ?? (title.toLowerCase().includes("choreograph") ? "pool" : "sources")}
             </Btn>
           </div>
         </div>

@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   Clock3,
+  FolderOpen,
   Gauge,
   GripVertical,
   Image as ImageIcon,
@@ -25,6 +26,8 @@ import {
 } from '../../engine/choreography';
 import { SeqSwitch } from './SequenceControls';
 import { cn } from '../../utils/cn';
+import { AssetPicker } from '../../../assetProvider/AssetProvider';
+import type { LibraryAsset } from '../../../../services/assetLibrary';
 
 function Label({ children, value }: { children: string; value?: React.ReactNode }) {
   return (
@@ -40,6 +43,7 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
   const cue = show.selectedCue;
   const fileRef = useRef<HTMLInputElement>(null);
   const [activeCastIndex, setActiveCastIndex] = useState<number | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   useEffect(() => setActiveCastIndex(null), [cue?.id]);
 
@@ -91,6 +95,50 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
     castSlots[index] = slot;
     show.updateCue(cue.id, { castSlots });
     setActiveCastIndex(index);
+  };
+
+  /**
+   * Pull artwork straight from the asset provider library into this scene.
+   * Library images are not in the pool yet, so they are stocked there first
+   * (keeping the cast grid and the deck in sync) and then cast immediately.
+   */
+  const addLibraryToCast = (libraryAssets: LibraryAsset[]) => {
+    setLibraryOpen(false);
+    if (!cue || libraryAssets.length === 0) return;
+
+    const pooled = new Set(engine.pool.map((asset) => asset.url));
+    const incoming = libraryAssets.filter((asset, index) => {
+      const first = libraryAssets.findIndex((item) => item.src === asset.src);
+      return first === index && !pooled.has(asset.src);
+    });
+    if (incoming.length) {
+      engine.addLibraryAssets(incoming.map((asset) => ({ name: asset.name, url: asset.src })));
+    }
+
+    const urls: string[] = [];
+    for (const asset of libraryAssets) {
+      if (!urls.includes(asset.src)) urls.push(asset.src);
+    }
+    if (!urls.length) return;
+
+    const exclusive = cue.formation === 'solo' || cue.formation === 'trail' || cue.formation === 'mosaic';
+    if (exclusive) {
+      // Solo, trail and mosaic scenes only perform one advert, so the first
+      // library pick takes the stage instead of silently overfilling the cue.
+      show.updateCue(cue.id, { assetUrls: [urls[0]], castSlots: [cue.castSlots[0] ?? 1] });
+      setActiveCastIndex(0);
+      return;
+    }
+
+    const assetUrls = [...cue.assetUrls];
+    const castSlots = [...cue.castSlots];
+    for (const url of urls) {
+      if (assetUrls.includes(url) || assetUrls.length >= 16) continue;
+      assetUrls.push(url);
+      castSlots.push(firstFreeSlot(castSlots));
+    }
+    show.updateCue(cue.id, { assetUrls, castSlots });
+    setActiveCastIndex(assetUrls.length - 1);
   };
 
   return (
@@ -378,9 +426,27 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
               </div>
             ) : (
               <div className="rounded border border-dashed border-[#3a4239] p-3 text-center text-[9px] text-[#667060]">
-                Load adverts into the pool to cast this scene.
+                No adverts in the pool yet — add some from the library below.
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setLibraryOpen(true)}
+              title="Pick images from the asset provider library and cast them in this scene"
+              className="mt-1.5 flex w-full items-center gap-2 rounded-md border border-dashed border-[#4b5a43] bg-[#141a13] px-2.5 py-1.5 text-left transition-colors hover:border-led-lime hover:bg-[#1b2418]"
+            >
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded border border-[#465640] text-led-lime">
+                <FolderOpen className="h-3 w-3" />
+              </span>
+              <span className="leading-tight">
+                <span className="block text-[10px] font-bold text-[#e8efe0]">Add from library</span>
+                <span className="block text-[8px] text-[#7f8a7c]">
+                  Choose pool &amp; library images for this cast
+                </span>
+              </span>
+              <Plus className="ml-auto h-3 w-3 text-[#7f8a7c]" />
+            </button>
 
             {cue.assetUrls.length > 0 && (
               <div className="mt-3 rounded-lg border border-[#364033] bg-[#0a0e0b] p-2.5">
@@ -638,6 +704,14 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
           <Plus className="h-4 w-4" /> Add the first scene
         </button>
       )}
+
+      <AssetPicker
+        open={libraryOpen}
+        title="Add images from library to the cast"
+        targetLabel="cast"
+        onClose={() => setLibraryOpen(false)}
+        onSend={addLibraryToCast}
+      />
     </div>
   );
 }

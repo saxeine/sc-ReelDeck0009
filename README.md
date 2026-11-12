@@ -17,7 +17,7 @@ Right-click any application element to open the movable **IBC** editor. Its **St
 
 ## Asset provider library
 
-The **Library** tab (shortcut `4`) is the editable asset holding area backed by a browser database (IndexedDB), so its contents survive reloads. Images can be added directly, saved from the **Slice studio** ("Save blocks to library"), or sent from **Zoom Studio** ("To library"); each asset can be renamed, tagged, favourited, and deleted. The library feeds both the **sequencer** ("+ Library" in the AdShop Sequencer's saved sources) and the **choreographer** ("Add from library" in the LED Studio's advert pool), which in turn drive the front page display and hand content back to ReelDeck; library selections can also be added to the ReelDeck board directly with "Add to board".
+The **Library** tab (shortcut `4`) is the editable asset holding area backed by a browser database (IndexedDB), so its contents survive reloads. Images can be added directly, saved from the **Slice studio** ("Save blocks to library"), or sent from **Zoom Studio** ("To library"); each asset can be renamed, tagged, favourited, and deleted. The library feeds both the **sequencer** ("+ Library" in the AdShop Sequencer's saved sources) and the **choreographer** ("Add from library" in the LED Studio's advert pool, or in a scene's **Advert cast** to pick images straight into that scene), which in turn drive the front page display and hand content back to ReelDeck; library selections can also be added to the ReelDeck board directly with "Add to board".
 
 ## The AdShop display
 
