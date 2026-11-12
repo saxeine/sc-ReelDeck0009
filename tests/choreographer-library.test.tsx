@@ -41,6 +41,16 @@ function makeHarness(formation: string) {
 
   const choreography = {
     cues: [cue],
+    templates: [],
+    activeTemplate: null,
+    activeTemplateId: "",
+    templateDirty: false,
+    saveTemplate: vi.fn(),
+    overwriteTemplate: vi.fn(),
+    renameTemplate: vi.fn(),
+    deleteTemplate: vi.fn(),
+    loadTemplate: vi.fn(),
+    editPresetAsTemplate: vi.fn(),
     selectedCueId: cue.id,
     selectedCue: cue,
     currentCue: cue,

@@ -13,7 +13,6 @@ import {
   MapPin,
   Plus,
   Repeat,
-  Sparkles,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -25,6 +24,7 @@ import {
   CHOREO_TRANSITIONS,
 } from '../../engine/choreography';
 import { SeqSwitch } from './SequenceControls';
+import { ShowTemplates } from './ShowTemplates';
 import { cn } from '../../utils/cn';
 import { AssetPicker } from '../../../assetProvider/AssetProvider';
 import type { LibraryAsset } from '../../../../services/assetLibrary';
@@ -143,29 +143,8 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
 
   return (
     <div className="flex flex-col gap-4 pb-3">
-      {/* show templates */}
-      <section>
-        <Label>Show templates</Label>
-        <div className="grid gap-1.5">
-          {show.presets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => show.loadPreset(preset.id)}
-              className="group rounded-lg border border-[#333c30] bg-[#11160f] p-2.5 text-left transition-all hover:border-violet-400/55 hover:bg-violet-400/[0.07] active:scale-[0.99]"
-            >
-              <span className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-violet-300" />
-                <span className="text-[10.5px] font-bold text-[#e5ece0]">{preset.name}</span>
-                <span className="ml-auto font-mono text-[8px] text-[#667060]">{preset.cues.length} scenes</span>
-              </span>
-              <span className="mt-1 block text-[8.7px] leading-snug text-[#7f8a7c]">
-                {preset.description}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {/* editable show templates */}
+      <ShowTemplates show={show} />
 
       {/* clock and show I/O */}
       <section className="rounded-lg border border-[#333c30] bg-[#11160f] p-2.5">

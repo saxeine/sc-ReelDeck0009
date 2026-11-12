@@ -12,6 +12,12 @@ import {
   normalizeCastSlots,
 } from './choreography';
 import { parseChoreographyShow } from './showFile';
+import { useChoreoTemplates } from '../../../hooks/useChoreoTemplates';
+import {
+  createChoreoTemplate,
+  removeChoreoTemplate,
+  updateChoreoTemplate,
+} from '../../../services/choreoTemplates';
 
 interface ChoreographyOptions {
   pool: AdvertAsset[];
@@ -20,6 +26,14 @@ interface ChoreographyOptions {
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/** Detached copies so template snapshots never alias the live show state. */
+const cloneCues = (cues: ChoreoCue[]): ChoreoCue[] =>
+  cues.map((cue) => ({ ...cue, assetUrls: [...cue.assetUrls], castSlots: [...cue.castSlots] }));
+
+/** Comparable fingerprint of everything a template stores. */
+const showSignature = (cues: ChoreoCue[], bpm: number, timeScale: number, loop: boolean) =>
+  JSON.stringify({ cues, bpm, timeScale, loop });
 
 /**
  * Beat-accurate show state machine. Rendering is derived from cue + monotonic
@@ -57,6 +71,13 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
   playingRef.current = playing;
 
   const presets = useMemo(() => buildShowPresets(pool), [pool]);
+  const templates = useChoreoTemplates();
+  const [activeTemplateId, setActiveTemplateId] = useState('');
+  const activeTemplate = templates.find((template) => template.id === activeTemplateId) ?? null;
+  const templateDirty = activeTemplate
+    ? showSignature(cues, bpmState, timeScale, loop) !==
+      showSignature(activeTemplate.cues, activeTemplate.bpm, activeTemplate.timeScale, activeTemplate.loop)
+    : false;
   const selectedCue = cues.find((cue) => cue.id === selectedCueId) ?? cues[0] ?? null;
   const currentCue = cues[cueIndex] ?? cues[0] ?? null;
   const canRun = cues.length > 0 && cues.some((cue) => cue.assetUrls.some(Boolean));
@@ -291,8 +312,8 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
     return () => cancelAnimationFrame(raf);
   }, [active, playing, notify]);
 
-  /** Load a program that was already submitted to the front page. */
-  const loadShow = useCallback(
+  /** Replace the show program and park the transport on the first scene. */
+  const applyProgram = useCallback(
     (
       nextCues: ChoreoCue[],
       options?: { bpm?: number; timeScale?: number; loop?: boolean }
@@ -300,7 +321,7 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
       playingRef.current = false;
       cueIndexRef.current = 0;
       elapsedRef.current = 0;
-      setCues(nextCues);
+      setCues(cloneCues(nextCues));
       setSelectedCueId(nextCues[0]?.id ?? '');
       setCueIndex(0);
       setElapsedMs(0);
@@ -314,26 +335,151 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
     [setBpm, setTimeScale]
   );
 
+  /** Load a program that was already submitted to the front page. */
+  const loadShow = useCallback(
+    (
+      nextCues: ChoreoCue[],
+      options?: { bpm?: number; timeScale?: number; loop?: boolean }
+    ) => {
+      setActiveTemplateId('');
+      applyProgram(nextCues, options);
+    },
+    [applyProgram]
+  );
+
   const loadPreset = useCallback(
     (id: string) => {
       const preset = presets.find((item) => item.id === id);
       if (!preset) return;
-      playingRef.current = false;
-      cueIndexRef.current = 0;
-      elapsedRef.current = 0;
-      setActive(false);
-      setPlaying(false);
-      setComplete(false);
-      setCueIndex(0);
-      setElapsedMs(0);
-      setCues(preset.cues);
-      setSelectedCueId(preset.cues[0]?.id ?? '');
-      setLoop(preset.loop ?? true);
-      setTimeScale(preset.timeScale ?? 0.65);
-      setBpm(preset.bpm ?? 120);
+      setActiveTemplateId('');
+      applyProgram(preset.cues, {
+        bpm: preset.bpm ?? 120,
+        timeScale: preset.timeScale ?? 0.65,
+        loop: preset.loop ?? true,
+      });
       notify(`${preset.name} loaded — ${preset.cues.length} scenes ready`, 'success');
     },
-    [presets, notify, setBpm, setTimeScale]
+    [presets, notify, applyProgram]
+  );
+
+  /* ---------------------------- show templates --------------------------- */
+
+  const snapshotShow = useCallback(
+    () => ({
+      cues: cloneCues(cuesRef.current),
+      bpm: bpmRef.current,
+      timeScale: timeScaleRef.current,
+      loop: loopRef.current,
+    }),
+    []
+  );
+
+  /** Keep repeated copies from colliding in the My templates list. */
+  const uniqueTemplateName = useCallback(
+    (base: string) => {
+      const taken = new Set(templates.map((template) => template.name.toLowerCase()));
+      if (!taken.has(base.toLowerCase())) return base;
+      let index = 2;
+      while (taken.has(`${base} ${index}`.toLowerCase())) index += 1;
+      return `${base} ${index}`;
+    },
+    [templates]
+  );
+
+  /** Save the whole current show — scenes, images, behaviours, clock — as a template. */
+  const saveTemplate = useCallback(
+    async (name: string, description = '') => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        notify('Name the template first', 'error');
+        return null;
+      }
+      const created = await createChoreoTemplate({
+        name: uniqueTemplateName(trimmed),
+        description,
+        ...snapshotShow(),
+      });
+      setActiveTemplateId(created.id);
+      notify(`Saved “${created.name}” — ${created.cues.length} scenes`, 'success');
+      return created;
+    },
+    [uniqueTemplateName, snapshotShow, notify]
+  );
+
+  /** Replace a saved template's program with the current show. */
+  const overwriteTemplate = useCallback(
+    async (id: string) => {
+      const updated = await updateChoreoTemplate(id, snapshotShow());
+      if (!updated) {
+        notify('That template no longer exists', 'error');
+        return;
+      }
+      setActiveTemplateId(updated.id);
+      notify(`“${updated.name}” saved with the current show`, 'success');
+    },
+    [snapshotShow, notify]
+  );
+
+  const renameTemplate = useCallback(
+    async (id: string, name: string, description: string) => {
+      const updated = await updateChoreoTemplate(id, { name, description });
+      if (!updated) return;
+      notify(`Template renamed to “${updated.name}”`, 'success');
+    },
+    [notify]
+  );
+
+  const deleteTemplate = useCallback(
+    async (id: string) => {
+      const target = templates.find((template) => template.id === id);
+      await removeChoreoTemplate(id);
+      if (activeTemplateId === id) setActiveTemplateId('');
+      notify(target ? `“${target.name}” removed from My templates` : 'Template removed', 'info');
+    },
+    [templates, activeTemplateId, notify]
+  );
+
+  const loadTemplate = useCallback(
+    (id: string) => {
+      const template = templates.find((item) => item.id === id);
+      if (!template) return;
+      applyProgram(template.cues, {
+        bpm: template.bpm,
+        timeScale: template.timeScale,
+        loop: template.loop,
+      });
+      setActiveTemplateId(template.id);
+      notify(`“${template.name}” loaded — ${template.cues.length} scenes ready`, 'success');
+    },
+    [templates, applyProgram, notify]
+  );
+
+  /** Turn a built-in show into an editable template with the same scenes. */
+  const editPresetAsTemplate = useCallback(
+    async (presetId: string) => {
+      const preset = presets.find((item) => item.id === presetId);
+      if (!preset) return;
+      const cues = cloneCues(preset.cues);
+      applyProgram(cues, {
+        bpm: preset.bpm ?? 120,
+        timeScale: preset.timeScale ?? 0.65,
+        loop: preset.loop ?? true,
+      });
+      const created = await createChoreoTemplate({
+        name: uniqueTemplateName(`${preset.name} copy`),
+        description: preset.description,
+        cues,
+        bpm: preset.bpm ?? 120,
+        timeScale: preset.timeScale ?? 0.65,
+        loop: preset.loop ?? true,
+      });
+      setActiveTemplateId(created.id);
+      notify(
+        `“${preset.name}” copied — swap images and behaviours, then Save changes`,
+        'success'
+      );
+    },
+    [presets, applyProgram, uniqueTemplateName, notify]
   );
 
   const exportShow = useCallback(() => {
@@ -361,25 +507,14 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
       try {
         const parsed = parseChoreographyShow(raw);
         const next = parsed.cues;
-        playingRef.current = false;
-        cueIndexRef.current = 0;
-        elapsedRef.current = 0;
-        setCues(next);
-        setBpm(parsed.bpm);
-        setTimeScale(parsed.timeScale);
-        setLoop(parsed.loop);
-        setSelectedCueId(next[0].id);
-        setCueIndex(0);
-        setElapsedMs(0);
-        setComplete(false);
-        setActive(false);
-        setPlaying(false);
+        setActiveTemplateId('');
+        applyProgram(next, { bpm: parsed.bpm, timeScale: parsed.timeScale, loop: parsed.loop });
         notify(`Imported ${next.length} choreography scene${next.length === 1 ? '' : 's'}`, 'success');
       } catch {
         notify('This is not a valid Gridline choreography file', 'error');
       }
     },
-    [notify, setBpm, setTimeScale]
+    [notify, applyProgram]
   );
 
   const frame = useMemo(
@@ -436,6 +571,16 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
     playheadMs,
     statusLabel,
     presets,
+    templates,
+    activeTemplate,
+    activeTemplateId,
+    templateDirty,
+    saveTemplate,
+    overwriteTemplate,
+    renameTemplate,
+    deleteTemplate,
+    loadTemplate,
+    editPresetAsTemplate,
     setBpm,
     setTimeScale,
     setLoop,
