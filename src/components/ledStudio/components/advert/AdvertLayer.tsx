@@ -289,6 +289,17 @@ export function AdvertLayer({
   const hitGridRef = useRef<HTMLDivElement>(null);
   const [painting, setPainting] = useState(false);
 
+  /* the auditioned scene's cast can be dragged from panel to panel */
+  const auditionCue = showMode && previewChoreography ? engine.choreography.selectedCue : null;
+  const castEditor = Boolean(auditionCue) && !active && !engine.boardPaintArmed;
+  const [castDrag, setCastDrag] = useState<{ index: number; from: number; to: number | null } | null>(null);
+  const castDragRef = useRef(castDrag);
+  castDragRef.current = castDrag;
+  const auditionCueRef = useRef(auditionCue);
+  auditionCueRef.current = auditionCue;
+  const updateCue = engine.choreography.updateCue;
+  const notify = engine.notify;
+
   /* a stroke ends wherever the pointer is released */
   useEffect(() => {
     const end = () => {
@@ -303,6 +314,47 @@ export function AdvertLayer({
       window.removeEventListener('pointercancel', end);
     };
   }, []);
+
+  /* drag a cast member between panels: drop commits its new start slot */
+  const castDragging = castDrag !== null;
+  useEffect(() => {
+    if (!castDragging) return;
+    const slotAt = (x: number, y: number) => {
+      const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-slot]');
+      if (!hit || !hitGridRef.current?.contains(hit)) return null;
+      const slot = Number(hit.dataset.slot);
+      return Number.isInteger(slot) && slot > 0 ? slot : null;
+    };
+    const onMove = (event: PointerEvent) => {
+      const slot = slotAt(event.clientX, event.clientY);
+      setCastDrag((prev) => {
+        if (!prev) return prev;
+        const to = slot && slot !== prev.from ? slot : null;
+        return prev.to === to ? prev : { ...prev, to };
+      });
+    };
+    const onUp = (event: PointerEvent) => {
+      const drag = castDragRef.current;
+      const slot = slotAt(event.clientX, event.clientY);
+      setCastDrag(null);
+      if (!drag || !slot || slot === drag.from) return;
+      const cue = auditionCueRef.current;
+      if (!cue || drag.index >= cue.castSlots.length) return;
+      const castSlots = [...cue.castSlots];
+      castSlots[drag.index] = slot;
+      updateCue(cue.id, { castSlots });
+      notify(`Cast moved to panel ${String(slot).padStart(2, '0')}`, 'success');
+    };
+    const onCancel = () => setCastDrag(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+    };
+  }, [castDragging, updateCue, notify]);
 
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -588,17 +640,30 @@ export function AdvertLayer({
           {Array.from({ length: cols * cols }, (_, i) => i + 1).map((slot) => {
             const rect = rectFor(slot);
             if (!rect) return null;
+            const castIndex = auditionCue ? auditionCue.castSlots.indexOf(slot) : -1;
+            const draggableCast = castEditor && castIndex >= 0;
+            const dropTarget = castDrag?.to === slot;
             return (
               <div
                 key={`hit-${slot}`}
                 data-slot={slot}
-                title={`Panel ${slot}`}
+                title={
+                  draggableCast
+                    ? `Panel ${slot} · drag to move cast ${castIndex + 1}`
+                    : castEditor
+                      ? `Panel ${slot} · drop a cast tile here`
+                      : `Panel ${slot}`
+                }
                 className={cn(
                   'absolute transition-colors select-none',
                   engine.boardPaintArmed
                     ? 'cursor-crosshair touch-none'
-                    : 'cursor-pointer',
-                  engine.boardPaintArmed && painting && hoveredSlot === slot && 'bg-cyan-300/10'
+                    : draggableCast
+                      ? 'cursor-grab active:cursor-grabbing touch-none'
+                      : 'cursor-pointer',
+                  engine.boardPaintArmed && painting && hoveredSlot === slot && 'bg-cyan-300/10',
+                  castDrag?.from === slot && 'ring-2 ring-inset ring-led-lime/70',
+                  dropTarget && 'bg-led-lime/20 ring-2 ring-inset ring-led-lime'
                 )}
                 style={{
                   left: `${rect.left}%`,
@@ -609,6 +674,10 @@ export function AdvertLayer({
                 onPointerDown={(e) => {
                   if (!engine.boardPaintArmed) {
                     engine.setSelectedSlot(slot);
+                    if (draggableCast) {
+                      e.preventDefault();
+                      setCastDrag({ index: castIndex, from: slot, to: null });
+                    }
                     return;
                   }
                   e.preventDefault();
@@ -709,6 +778,21 @@ export function AdvertLayer({
         <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-[6] pointer-events-none">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-300 text-[#06282b] text-[9px] font-black font-mono uppercase tracking-[0.16em] shadow-[0_0_22px_rgba(34,211,238,0.55)] animate-pulse">
             paint mode · drag across panels
+          </div>
+        </div>
+      )}
+
+      {/* audition move banner */}
+      {castEditor && (
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-[6] pointer-events-none">
+          <div className="flex items-center gap-1.5 rounded-full border border-led-lime/60 bg-[#0b120a]/95 px-2.5 py-1 font-mono text-[8.5px] font-black uppercase tracking-[0.16em] text-led-lime shadow-[0_0_18px_rgba(203,243,107,0.25)]">
+            {castDrag
+              ? castDrag.to
+                ? `move cast → panel ${String(castDrag.to).padStart(2, '0')}`
+                : 'move cast · choose a panel'
+              : auditionCue && auditionCue.castSlots.length
+                ? 'drag a cast tile to another panel'
+                : 'no cast in this scene yet'}
           </div>
         </div>
       )}

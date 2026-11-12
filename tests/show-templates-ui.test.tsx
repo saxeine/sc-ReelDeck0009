@@ -39,6 +39,7 @@ function makeShow() {
     loadTemplate: vi.fn(),
     loadPreset: vi.fn(),
     editPresetAsTemplate: vi.fn(async () => {}),
+    newShow: vi.fn(),
   };
   return { show: show as unknown as ChoreographyEngine, spies: show };
 }
@@ -80,7 +81,7 @@ describe("show template editor UI", () => {
     act(() => root.render(<ShowTemplates show={show} />));
 
     await act(async () => {
-      buttonByText(container, "Save current show as template")!.click();
+      buttonByText(container, "Save as template")!.click();
     });
     const name = container.querySelector<HTMLInputElement>("input[aria-label='Template name']")!;
     await act(async () => {
@@ -102,6 +103,22 @@ describe("show template editor UI", () => {
       buttonByText(container, "Save changes to")!.click();
     });
     expect(spies.overwriteTemplate).toHaveBeenCalledWith("t1");
+  });
+
+  it("starts a new show after confirmation", async () => {
+    const { show, spies } = makeShow();
+    act(() => root.render(<ShowTemplates show={show} />));
+
+    await act(async () => {
+      buttonByText(container, "New show")!.click();
+    });
+    expect(spies.newShow).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Start a new show?");
+
+    await act(async () => {
+      buttonByText(container, "Start new show")!.click();
+    });
+    expect(spies.newShow).toHaveBeenCalledTimes(1);
   });
 
   it("copies a built-in show into an editable template",() => {

@@ -3,6 +3,7 @@ import {
   BookmarkPlus,
   Check,
   Pencil,
+  Plus,
   RefreshCw,
   Save,
   Sparkles,
@@ -29,8 +30,10 @@ export function ShowTemplates({ show }: { show: ChoreographyEngine }) {
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [newArmed, setNewArmed] = useState(false);
 
   const openNew = () => {
+    setNewArmed(false);
     setForm({ mode: 'new' });
     setName('');
     setDescription('');
@@ -187,21 +190,57 @@ export function ShowTemplates({ show }: { show: ChoreographyEngine }) {
           )}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={openNew}
-          className="mb-2 flex w-full items-center gap-2 rounded-md border border-dashed border-[#4b5a43] bg-[#141a13] px-2.5 py-1.5 text-left transition-colors hover:border-led-lime hover:bg-[#1b2418]"
-        >
-          <span className="grid h-5 w-5 shrink-0 place-items-center rounded border border-[#465640] text-led-lime">
-            <BookmarkPlus className="h-3 w-3" />
-          </span>
-          <span className="leading-tight">
-            <span className="block text-[10px] font-bold text-[#e8efe0]">Save current show as template</span>
-            <span className="block text-[8px] text-[#7f8a7c]">
-              Keeps images and behaviours for reuse
-            </span>
-          </span>
-        </button>
+        <>
+          <div className="mb-2 grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteId(null);
+                setNewArmed(true);
+              }}
+              className="flex items-center justify-center gap-1.5 rounded-md border border-[#4b5a43] bg-[#141a13] px-2 py-1.5 text-[9.5px] font-bold text-[#c0cbb8] transition-colors hover:border-violet-400/60 hover:text-violet-200"
+            >
+              <Plus className="h-3 w-3" />
+              New show
+            </button>
+            <button
+              type="button"
+              onClick={openNew}
+              className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-[#4b5a43] bg-[#141a13] px-2 py-1.5 text-[9.5px] font-bold text-[#e8efe0] transition-colors hover:border-led-lime hover:bg-[#1b2418]"
+            >
+              <BookmarkPlus className="h-3 w-3 text-led-lime" />
+              Save as template
+            </button>
+          </div>
+          {newArmed && (
+            <div className="mb-2 rounded-lg border border-violet-400/40 bg-violet-400/[0.07] p-2">
+              <p className="text-[9px] leading-snug text-[#d6dfd0]">
+                Start a new show? The current scenes will be replaced with a fresh scene. Save them as a
+                template first if you want to keep them.
+              </p>
+              <div className="mt-1.5 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewArmed(false);
+                    show.newShow();
+                  }}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-violet-400/55 bg-violet-400/15 py-1.5 text-[9.5px] font-bold text-violet-100 transition-colors hover:bg-violet-400/25"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Start new show
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewArmed(false)}
+                  className="rounded-md border border-[#3a4239] px-2.5 py-1.5 text-[9.5px] font-bold text-[#8e9988] transition-colors hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* my templates */}

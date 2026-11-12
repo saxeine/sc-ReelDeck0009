@@ -152,6 +152,38 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
     [notify]
   );
 
+  /** Move one cast member's start panel (drag on the wall or in the slot grid). */
+  const moveCast = useCallback(
+    (cueId: string, castIndex: number, slot: number) => {
+      const cue = cuesRef.current.find((item) => item.id === cueId);
+      if (!cue || castIndex < 0 || castIndex >= cue.castSlots.length) return;
+      const target = clamp(Math.round(slot), 1, cols * cols);
+      if (cue.castSlots[castIndex] === target) return;
+      const castSlots = [...cue.castSlots];
+      castSlots[castIndex] = target;
+      updateCue(cueId, { castSlots });
+    },
+    [cols, updateCue]
+  );
+
+  /** Reorder the cast (changes the numbering and default formation spread). */
+  const reorderCast = useCallback(
+    (cueId: string, from: number, to: number) => {
+      const cue = cuesRef.current.find((item) => item.id === cueId);
+      if (!cue) return;
+      const last = cue.assetUrls.length - 1;
+      if (from === to || from < 0 || to < 0 || from > last || to > last) return;
+      const assetUrls = [...cue.assetUrls];
+      const castSlots = [...cue.castSlots];
+      const [url] = assetUrls.splice(from, 1);
+      const [slot] = castSlots.splice(from, 1);
+      assetUrls.splice(to, 0, url);
+      castSlots.splice(to, 0, slot);
+      updateCue(cueId, { assetUrls, castSlots });
+    },
+    [updateCue]
+  );
+
   const moveCue = useCallback((id: string, direction: -1 | 1) => {
     setCues((previous) => {
       const at = previous.findIndex((cue) => cue.id === id);
@@ -482,6 +514,27 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
     [presets, applyProgram, uniqueTemplateName, notify]
   );
 
+  /** Start a fresh show instead of loading or copying a template. */
+  const newShow = useCallback(
+    (cast?: string[]) => {
+      const urls = cast?.filter(Boolean).length
+        ? cast.filter(Boolean)
+        : pool.map((asset) => asset.url).filter(Boolean).slice(0, 4);
+      const first = createChoreoCue(urls, { name: 'Scene 1' });
+      applyProgram([first], { bpm: 120, timeScale: 0.65, loop: true });
+      setPreviewProgress(0.28);
+      setActiveTemplateId('');
+      notify(
+        urls.length
+          ? 'New show started — tweak this scene or add more'
+          : 'New show started — cast artwork in the first scene',
+        'success'
+      );
+    },
+    [pool, applyProgram, notify]
+  );
+
+
   const exportShow = useCallback(() => {
     const payload = {
       schema: 'gridline.choreography/v2',
@@ -581,6 +634,9 @@ export function useChoreography({ pool, cols, notify }: ChoreographyOptions) {
     deleteTemplate,
     loadTemplate,
     editPresetAsTemplate,
+    newShow,
+    moveCast,
+    reorderCast,
     setBpm,
     setTimeScale,
     setLoop,

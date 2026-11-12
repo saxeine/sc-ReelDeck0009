@@ -369,7 +369,7 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
             <Label
               value={
                 <span className="font-mono text-[8px] text-[#768170]">
-                  {cue.assetUrls.length} selected · click to add/remove
+                  {cue.assetUrls.length} selected · drag to reorder
                 </span>
               }
             >
@@ -379,12 +379,34 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
               <div className="grid grid-cols-5 gap-1.5">
                 {castAssets.map((asset) => {
                   const selected = cue.assetUrls.includes(asset.url);
-                  const order = cue.assetUrls.indexOf(asset.url) + 1;
+                  const castIndex = selected ? cue.assetUrls.indexOf(asset.url) : -1;
+                  const order = castIndex + 1;
                   return (
                     <button
                       key={asset.id}
                       type="button"
-                      title={`${selected ? 'Remove' : 'Add'} ${asset.name} ${selected ? 'from' : 'to'} the cast`}
+                      draggable={selected}
+                      title={
+                        selected
+                          ? `Cast ${order} · drag to reorder · click to remove`
+                          : `Add ${asset.name} to the cast`
+                      }
+                      onDragStart={(event) => {
+                        if (!selected) {
+                          event.preventDefault();
+                          return;
+                        }
+                        event.dataTransfer.setData('application/x-gridline-cast-order', String(castIndex));
+                        event.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragOver={(event) => {
+                        if (selected) event.preventDefault();
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const from = Number(event.dataTransfer.getData('application/x-gridline-cast-order'));
+                        if (Number.isInteger(from) && from >= 0) show.reorderCast(cue.id, from, castIndex);
+                      }}
                       onClick={() => toggleAsset(asset.url)}
                       className={cn(
                         'group relative aspect-square overflow-hidden rounded-md border transition-all',
@@ -509,7 +531,8 @@ export function ChoreographyControls({ engine }: { engine: AdvertEngine }) {
                   })}
                 </div>
                 <p className="mt-2 text-[8px] leading-snug text-[#65705f]">
-                  Start slots seed every motion. For a corner wipe, place the hero advert in panel 01, 04, 13 or 16.
+                  Start slots seed every motion. Drag a callout on the wall preview to move it between panels.
+                  For a corner wipe, place the hero advert in panel 01, 04, 13 or 16.
                 </p>
               </div>
             )}

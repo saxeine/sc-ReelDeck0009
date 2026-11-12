@@ -100,6 +100,46 @@ describe("choreographer show templates", () => {
     expect(engine().activeTemplateId).toBe("");
   });
 
+  it("moves a cast member to another panel and reorders the cast", async () => {
+    const engine = await mount();
+    const cue = engine().cues[0];
+    expect(cue.castSlots.length).toBeGreaterThan(2);
+
+    await act(async () => {
+      engine().moveCast(cue.id, 0, 16);
+    });
+    expect(engine().selectedCue?.castSlots[0]).toBe(16);
+
+    const urlsBefore = [...engine().selectedCue!.assetUrls];
+    const slotsBefore = [...engine().selectedCue!.castSlots];
+    await act(async () => {
+      engine().reorderCast(cue.id, 0, 2);
+    });
+    const after = engine().selectedCue!;
+    expect(after.assetUrls[2]).toBe(urlsBefore[0]);
+    expect(after.assetUrls[0]).toBe(urlsBefore[1]);
+    expect(after.castSlots[2]).toBe(slotsBefore[0]);
+    expect(after.castSlots[0]).toBe(slotsBefore[1]);
+  });
+
+  it("starts a new show from scratch without losing saved templates", async () => {
+    const engine = await mount();
+    await act(async () => {
+      await engine().saveTemplate("Keep me");
+    });
+    expect(engine().activeTemplateId).not.toBe("");
+
+    await act(async () => {
+      engine().newShow();
+    });
+    expect(engine().cues).toHaveLength(1);
+    expect(engine().cues[0].name).toBe("Scene 1");
+    expect(engine().activeTemplateId).toBe("");
+    expect(engine().templates).toHaveLength(1);
+    expect(engine().bpm).toBe(120);
+    expect(engine().timeScale).toBe(0.65);
+  });
+
   it("turns a built-in show into an editable copy", async () => {
     const engine = await mount();
     await act(async () => {
